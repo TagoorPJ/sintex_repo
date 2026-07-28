@@ -1,0 +1,629 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <title>QR Scanner</title>
+  <style>
+    :root {
+      --bg: #f3f6fb;
+      --surface: #ffffff;
+      --text: #12202f;
+      --muted: #64748b;
+      --border: #d6e0ea;
+      --accent: #0ea5e9;
+      --success: #15803d;
+      --error: #dc2626;
+      --shadow: 0 10px 30px rgba(18, 32, 47, 0.1);
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100dvh;
+      display: grid;
+      place-items: center;
+      padding: 16px;
+      font-family: "Segoe UI", system-ui, -apple-system, sans-serif;
+      color: var(--text);
+      background:
+        radial-gradient(circle at 20% 10%, #e0f2fe 0%, transparent 45%),
+        radial-gradient(circle at 90% 90%, #dbeafe 0%, transparent 45%),
+        var(--bg);
+    }
+
+    .app {
+      width: min(100%, 430px);
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 18px;
+      box-shadow: var(--shadow);
+      padding: 18px 16px 22px;
+      display: grid;
+      gap: 14px;
+      text-align: center;
+    }
+
+    .title {
+      margin: 2px 0 0;
+      font-size: 1.15rem;
+      font-weight: 700;
+      letter-spacing: 0.01em;
+    }
+
+    .subtitle {
+      margin: 0;
+      color: var(--muted);
+      font-size: 0.92rem;
+    }
+
+    .scanner-wrap {
+      position: relative;
+      width: 100%;
+      aspect-ratio: 1 / 1;
+      border-radius: 14px;
+      overflow: hidden;
+      border: 1px solid var(--border);
+      background: #0b1220;
+    }
+
+    #reader {
+      width: 100%;
+      height: 100%;
+    }
+
+    /* Keep html5-qrcode internals clean */
+    #reader video {
+      object-fit: cover !important;
+    }
+
+    .qr-frame {
+      pointer-events: none;
+      position: absolute;
+      inset: 16%;
+      border: 2.5px solid rgba(14, 165, 233, 0.95);
+      border-radius: 12px;
+      box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.32);
+    }
+
+    .qr-frame::before,
+    .qr-frame::after {
+      content: "";
+      position: absolute;
+      width: 22px;
+      height: 22px;
+      border: 3px solid #7dd3fc;
+    }
+
+    .qr-frame::before {
+      top: -3px;
+      left: -3px;
+      border-right: 0;
+      border-bottom: 0;
+      border-radius: 10px 0 0 0;
+    }
+
+    .qr-frame::after {
+      right: -3px;
+      bottom: -3px;
+      border-left: 0;
+      border-top: 0;
+      border-radius: 0 0 10px 0;
+    }
+
+    .status {
+      min-height: 24px;
+      margin: 0;
+      font-size: 0.95rem;
+      font-weight: 600;
+    }
+
+    .status.info {
+      color: var(--muted);
+    }
+
+    .status.success {
+      color: var(--success);
+    }
+
+    .status.error {
+      color: var(--error);
+    }
+
+    .hint {
+      margin: -2px 0 0;
+      color: var(--muted);
+      font-size: 0.87rem;
+    }
+
+    .actions {
+      display: grid;
+      place-items: center;
+      min-height: 54px;
+      width: 100%;
+    }
+
+    .result-actions {
+      width: 100%;
+      display: grid;
+      gap: 10px;
+      animation: slideUp 0.22s ease;
+    }
+
+    .result-actions[hidden] {
+      display: none;
+    }
+
+    button {
+      border: 0;
+      border-radius: 999px;
+      padding: 11px 18px;
+      background: #0f172a;
+      color: #fff;
+      font-size: 0.92rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: transform 0.1s ease, opacity 0.2s ease;
+    }
+
+    .result-actions button {
+      width: 100%;
+      border-radius: 12px;
+      padding: 13px 16px;
+      font-size: 0.95rem;
+      font-weight: 700;
+      letter-spacing: 0.01em;
+    }
+
+    #showBalanceBtn {
+      background: linear-gradient(135deg, #166534 0%, #16a34a 100%);
+      box-shadow: 0 8px 20px rgba(22, 101, 52, 0.28);
+    }
+
+    #retryBtn {
+      background: #f8fafc;
+      color: #0f172a;
+      border: 1px solid #cbd5e1;
+    }
+
+    .scanner-wrap[hidden] {
+      display: none;
+    }
+
+    .app.result-mode .subtitle {
+      display: none;
+    }
+
+    button:active {
+      transform: translateY(1px);
+    }
+
+    button[hidden] {
+      display: none;
+    }
+
+    .spinner {
+      width: 28px;
+      height: 28px;
+      border: 3px solid #cbd5e1;
+      border-top-color: var(--accent);
+      border-radius: 50%;
+      animation: spin 0.9s linear infinite;
+    }
+
+    .spinner[hidden] {
+      display: none;
+    }
+
+    @keyframes spin {
+      to {
+        transform: rotate(360deg);
+      }
+    }
+
+    @keyframes slideUp {
+      from {
+        opacity: 0;
+        transform: translateY(8px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+  </style>
+</head>
+<body>
+  <main id="appRoot" class="app">
+    <h1 class="title">QR Scanner</h1>
+    <p class="subtitle">Point your camera at the QR code</p>
+
+    <section id="scannerWrap" class="scanner-wrap" aria-label="Camera scanner preview">
+      <div id="reader"></div>
+      <div class="qr-frame" aria-hidden="true"></div>
+    </section>
+
+    <p id="status" class="status info" role="status" aria-live="polite">Initializing camera...</p>
+    <p id="hint" class="hint">Align QR code inside the box</p>
+    <div class="actions">
+      <div id="spinner" class="spinner" hidden aria-label="Loading"></div>
+      <div id="resultActions" class="result-actions" hidden>
+        <button id="openWhatsappBtn" type="button" hidden>Open WhatsApp</button>
+        <button id="retryBtn" type="button" hidden>Scan QR Code</button>
+      </div>
+    </div>
+  </main>
+<script src="{{ url_for('static', path='html5-qrcode.min.js') }}" defer></script>
+  <script>
+    (function () {
+      "use strict";
+
+      // Configuration
+      const API_ENDPOINT = "api/v1/qr/callback";
+      const WHATSAPP_PHONE = "916359011311";
+      const READER_ID = "reader";
+
+      // State
+      let html5QrCode = null;
+      let isScannerRunning = false;
+      let scanLock = false; // Prevent duplicate API calls
+
+      // Elements
+      const appRootEl = document.getElementById("appRoot");
+      const scannerWrapEl = document.getElementById("scannerWrap");
+      const resultActionsEl = document.getElementById("resultActions");
+      const statusEl = document.getElementById("status");
+      const hintEl = document.getElementById("hint");
+      const openWhatsappBtn = document.getElementById("openWhatsappBtn");
+      const retryBtn = document.getElementById("retryBtn");
+      const spinnerEl = document.getElementById("spinner");
+
+      function logEvent(event, details) {
+        if (details !== undefined) {
+          console.log(`[QR] ${event}`, details);
+          return;
+        }
+        console.log(`[QR] ${event}`);
+      }
+
+      function setStatus(message, type) {
+        statusEl.textContent = message;
+        statusEl.className = `status ${type}`;
+      }
+
+      function setHint(message) {
+        hintEl.textContent = message;
+      }
+
+      function updateResultActionsVisibility() {
+        resultActionsEl.hidden = openWhatsappBtn.hidden && retryBtn.hidden;
+      }
+
+      function setResultMode(show) {
+        appRootEl.classList.toggle("result-mode", show);
+        scannerWrapEl.hidden = show;
+      }
+
+      function showRetry(show) {
+        retryBtn.hidden = !show;
+        updateResultActionsVisibility();
+      }
+
+      function showSpinner(show) {
+        spinnerEl.hidden = !show;
+      }
+
+      function showBalanceAction(show) {
+        openWhatsappBtn.hidden = !show;
+        if (show) {
+          openWhatsappBtn.textContent = "Open WhatsApp";
+        }
+        updateResultActionsVisibility();
+      }
+
+      function buildWhatsAppRedirectUrl() {
+        const userAgent = navigator.userAgent || "";
+        const isAndroid = /Android/i.test(userAgent);
+        const isIOS = /iPhone|iPad|iPod/i.test(userAgent);
+
+        if (isAndroid) {
+          return `intent://send?phone=${WHATSAPP_PHONE}#Intent;scheme=whatsapp;package=com.whatsapp;end`;
+        }
+
+        if (isIOS) {
+          return `whatsapp://send?phone=${WHATSAPP_PHONE}`;
+        }
+
+        return `https://wa.me/${WHATSAPP_PHONE}`;
+      }
+
+      function redirectToWhatsApp() {
+        const directUrl = buildWhatsAppRedirectUrl();
+        const launchLink = document.createElement("a");
+        launchLink.href = directUrl;
+        launchLink.target = "_self";
+        launchLink.rel = "noreferrer noopener";
+        document.body.appendChild(launchLink);
+        launchLink.click();
+        launchLink.remove();
+
+        window.location.href = directUrl;
+      }
+
+      function vibrateOnSuccess() {
+        if ("vibrate" in navigator) {
+          navigator.vibrate(120);
+        }
+      }
+
+      function getUserIdFromUrl() {
+        try {
+          const params = new URLSearchParams(window.location.search || "");
+          const raw = params.get("user_id_evolve");
+          if (!raw) return null;
+          const n = Number(raw);
+          return Number.isNaN(n) ? null : n;
+        } catch (e) {
+          return null;
+        }
+      }
+      function getWhatsappNumberFromUrl() {
+        try {
+          const params = new URLSearchParams(window.location.search || "");
+          const raw = params.get("whatsapp_number");
+
+          if (!raw) return null;
+
+          // keep only digits
+          return raw.replace(/\D/g, "");
+        } catch (e) {
+          return null;
+        }
+      }
+
+      function getDealerCodeFromUrl() {
+        try {
+          const params = new URLSearchParams(window.location.search || "");
+          const raw = params.get("dealer_code");
+          if (!raw) return null;
+          return String(raw).trim();
+        } catch (e) {
+          return null;
+        }
+      }
+
+      async function postQrData(decodedText) {
+        const userId = getUserIdFromUrl();
+        const whatsappNumber = getWhatsappNumberFromUrl();
+        const dealerCode = getDealerCodeFromUrl();
+
+        if (!userId) {
+          throw new Error("Missing user_id_evolve in URL query parameters");
+        }
+
+        if (!whatsappNumber) {
+          throw new Error("Missing whatsapp_number in URL query parameters");
+        }
+
+        if (!dealerCode) {
+          throw new Error("Missing dealer_code in URL query parameters");
+        }
+
+        const payload = {
+          whatsapp_number: whatsappNumber,
+          user_id_evolve: String(userId),
+          qrcode: String(decodedText),
+          dealer_code: dealerCode
+        };
+
+        logEvent("Payload to send", payload);
+
+        const response = await fetch(API_ENDPOINT, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify(payload)
+        });
+
+        if (!response.ok) {
+          const text = await response.text().catch(() => "");
+          throw new Error(`API request failed (${response.status}) ${text}`.trim());
+        }
+
+        return response;
+      }
+      async function stopScanner() {
+        if (!html5QrCode || !isScannerRunning) {
+          return;
+        }
+
+        try {
+          await html5QrCode.stop();
+          await html5QrCode.clear();
+          isScannerRunning = false;
+          logEvent("Scanner stopped");
+        } catch (error) {
+          isScannerRunning = false;
+          logEvent("Scanner stop error", error);
+        }
+      }
+
+      function handleScanError(errorMessage) {
+        // Expected during continuous scanning when no QR is found.
+        if (!scanLock) {
+          setHint("Align QR code inside the box");
+        }
+        if (errorMessage && Math.random() < 0.01) {
+          logEvent("Scan attempt", errorMessage);
+        }
+      }
+
+      async function onScanSuccess(decodedText) {
+        if (scanLock) {
+          logEvent("Duplicate scan ignored", decodedText);
+          return;
+        }
+
+        scanLock = true;
+        logEvent("Scan success", decodedText);
+
+        setStatus("QR detected. Verifying...", "info");
+        setHint("Please wait");
+        showRetry(false);
+        showBalanceAction(false);
+        showSpinner(true);
+        setResultMode(false);
+
+        await stopScanner();
+
+        try {
+          await postQrData(decodedText);
+          logEvent("API success");
+          await stopScanner();
+          vibrateOnSuccess();
+          setStatus("Success!", "success");
+          setHint("Tap Scan QR Code to scan another.");
+          showSpinner(false);
+          setResultMode(true);
+          showBalanceAction(true);
+          showRetry(true);
+          // Auto-redirect to WhatsApp (no message)
+          setTimeout(() => {
+            try { redirectToWhatsApp(); } catch (e) { logEvent('Redirect failed', e); }
+          }, 700);
+        } catch (error) {
+          logEvent("API failure", error);
+          setStatus("Failed to submit QR. Please retry.", "error");
+          setHint("Check connection and scan again");
+          showSpinner(false);
+          showBalanceAction(false);
+          showRetry(true);
+          scanLock = false;
+        }
+      }
+
+      function delay(ms) {
+        return new Promise((resolve) => setTimeout(resolve, ms));
+      }
+
+      function classifyStartError(error) {
+        const message = String((error && error.message) || error || "").toLowerCase();
+        if (message.includes("permission") || message.includes("notallowederror")) {
+          return "Camera permission denied. Please allow camera access and retry.";
+        }
+        if (message.includes("camera") && (message.includes("not found") || message.includes("not available"))) {
+          return "No camera found on this device.";
+        }
+        return "Unable to start camera. Please retry.";
+      }
+
+      async function startScanner() {
+        showSpinner(false);
+        showBalanceAction(false);
+        showRetry(false);
+        setResultMode(false);
+        setStatus("Scanning...", "info");
+        setHint("Align QR code inside the box");
+
+        if (!window.Html5Qrcode) {
+          setStatus("Scanner library failed to load. Check your network.", "error");
+          showRetry(true);
+          return;
+        }
+
+        try {
+          const devices = await Html5Qrcode.getCameras();
+          if (!devices || devices.length === 0) {
+            setStatus("No camera found on this device.", "error");
+            setHint("You can use another device with a camera.");
+            showRetry(true);
+            logEvent("No camera found");
+            return;
+          }
+
+          if (!html5QrCode) {
+            html5QrCode = new Html5Qrcode(READER_ID);
+          }
+
+          const cameraConfig = { facingMode: "environment" };
+          const scanConfig = {
+            fps: 10,
+            qrbox: (viewfinderWidth, viewfinderHeight) => {
+              const size = Math.floor(Math.min(viewfinderWidth, viewfinderHeight) * 0.68);
+              return { width: size, height: size };
+            },
+            aspectRatio: 1
+          };
+
+          await html5QrCode.start(cameraConfig, scanConfig, onScanSuccess, handleScanError);
+          isScannerRunning = true;
+          logEvent("Scanner started");
+        } catch (error) {
+          isScannerRunning = false;
+          const friendly = classifyStartError(error);
+          setStatus(friendly, "error");
+          setHint("Tap Scan QR Code after granting permission.");
+          showRetry(true);
+          logEvent("Scanner start failure", error);
+        }
+      }
+
+      async function restartScanner() {
+        logEvent("Retry scan requested");
+        scanLock = false;
+        showRetry(false);
+        showBalanceAction(false);
+        showSpinner(false);
+        await stopScanner();
+        await delay(180);
+        await startScanner();
+      }
+
+      function bindEvents() {
+        openWhatsappBtn.addEventListener("click", () => {
+          redirectToWhatsApp();
+        });
+
+        retryBtn.addEventListener("click", () => {
+          restartScanner().catch((error) => {
+            logEvent("Retry failure", error);
+            setStatus("Retry failed. Please refresh the page.", "error");
+            showRetry(true);
+          });
+        });
+
+        // Avoid camera resource leaks on background/exit.
+        document.addEventListener("visibilitychange", async () => {
+          if (document.hidden) {
+            await stopScanner();
+          } else if (!scanLock && !isScannerRunning) {
+            await startScanner();
+          }
+        });
+
+        window.addEventListener("beforeunload", () => {
+          stopScanner().catch(() => {});
+        });
+      }
+
+      async function init() {
+        bindEvents();
+        await startScanner();
+      }
+
+      window.addEventListener("load", () => {
+        init().catch((error) => {
+          logEvent("Initialization failure", error);
+          setStatus("Initialization failed. Please retry.", "error");
+          showRetry(true);
+        });
+      });
+    })();
+  </script>
+</body>
+</html>
+ 
