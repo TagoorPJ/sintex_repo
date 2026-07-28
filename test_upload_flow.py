@@ -224,6 +224,36 @@ async def scenario_no_match():
     expect("stage stays qr_awaiting_name", "qr_awaiting_name" in d.state_json)
 
 
+async def scenario_show_more_always_option_11():
+    print("\n=== DEALER PAGINATION (OPTION 11 ALWAYS WORKS) ===")
+    original_fetch = H.fetch_dealers
+    paged_dealers = [
+        {"firm_name": f"RAM DEALER {i:02d}", "dealer_code": f"P{i:04d}"}
+        for i in range(1, 26)
+    ]
+
+    async def fetch_paged_dealers(user_id_evolve, force=False):
+        return list(paged_dealers)
+
+    H.fetch_dealers = fetch_paged_dealers
+    try:
+        d = Driver(language="english")
+        await d.turn("2", last_assistant=REALISTIC_MAIN_MENU)
+        await d.turn("1")
+        r = await d.turn("ram")
+        expect("page 1 shows permanent option 11", "11. Show more options" in r.assistant_reply)
+
+        r = await d.turn("11")
+        expect("bare 11 advances to page 2", "RAM DEALER 11" in r.assistant_reply)
+        expect("page 2 still shows option 11", "11. Show more options" in r.assistant_reply)
+
+        r = await d.turn("option 11")
+        expect("'option 11' advances to page 3", "RAM DEALER 21" in r.assistant_reply)
+        expect("last page does not show option 11", "11. Show more options" not in r.assistant_reply)
+    finally:
+        H.fetch_dealers = original_fetch
+
+
 async def scenario_cancel_mid_flow():
     print("\n=== CANCEL MID-FLOW (hinglish) ===")
     d = Driver(language="hinglish")
@@ -264,6 +294,7 @@ async def main():
     await scenario_claim_hindi()
     await scenario_keyword_trigger_marathi()
     await scenario_no_match()
+    await scenario_show_more_always_option_11()
     await scenario_cancel_mid_flow()
     await scenario_unregistered_user_passthrough()
     await scenario_main_menu_3_passthrough()

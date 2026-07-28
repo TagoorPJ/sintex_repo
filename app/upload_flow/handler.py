@@ -126,6 +126,28 @@ def _is_pure_int(text: str) -> Optional[int]:
         return None
 
 
+def _parse_numbered_choice(text: str) -> Optional[int]:
+    """
+    Parse a numbered-menu reply without involving the LLM.
+
+    Besides a bare number, accept common WhatsApp replies such as
+    ``11.``, ``11)``, ``#11``, ``option 11`` and ``11th``. This is used
+    only at stages that explicitly expect a numbered choice.
+    """
+    raw = _to_ascii_digits(text).lower()
+    match = re.fullmatch(
+        r"\s*(?:option|opt|number|no\.?|#)?\s*(\d+)"
+        r"(?:st|nd|rd|th)?\s*[\.\)]?\s*",
+        raw,
+    )
+    if not match:
+        return None
+    try:
+        return int(match.group(1))
+    except ValueError:
+        return None
+
+
 def _is_positive_amount(text: str) -> Optional[float]:
     """Return float if text is a positive number (commas / spaces ok), else None."""
     raw = _to_ascii_digits(text).replace(",", "").replace(" ", "")
@@ -460,7 +482,7 @@ async def _advance(
 
     # ---------- After submenu, expect 1 / 2 / 3 ----------
     if stage == STAGE_SUBMENU_SHOWN:
-        choice = _is_pure_int(user_message)
+        choice = _parse_numbered_choice(user_message)
 
         if choice == 1:
             return await _enter_dealer_selection(
@@ -556,9 +578,11 @@ async def _advance(
 
     # ---------- Awaiting serial number (QR or Claim) ----------
     if stage in (STAGE_QR_SERIAL, STAGE_CLAIM_SERIAL):
-        chosen = _is_pure_int(user_message)
+        chosen = _parse_numbered_choice(user_message)
         page_matches = state.current_page_matches()
-        show_more_serial = len(page_matches) + 1  # e.g. 11 when page has 10 items
+        # Option 11 is a stable paging command on every full dealer page.
+        # Never derive it from mutable page contents.
+        show_more_serial = PAGE_SIZE + 1
 
         # ── "Show more" selected ──────────────────────────────────
         if chosen == show_more_serial and state.has_next_page():

@@ -18,8 +18,7 @@ PDF layout for a reward statement:
   ┌─────────────────────────────────────────────────────────┐
   │   Reward Statement                            [logo]    │
   │                                                         │
-  │   Customer: <name>            Period: <from> – <to>     │
-  │   Mobile  : <phone>                                     │
+  │   Mobile  : <phone>           Period: <from> – <to>     │
   │                                                         │
   │   ┌──────────┬───────────────┬────────────┬──────┬──────┐│
   │   │ Date     │ Product       │ QR Code    │ Pts  │ Stat ││
@@ -158,7 +157,6 @@ _COL_MAX_CHARS = {
 # ---------------------------------------------------------
 def create_reward_statement_pdf(
     *,
-    customer_name: str,
     customer_phone: str,
     user_id_evolve: str,
     from_date: str,
@@ -203,7 +201,6 @@ def create_reward_statement_pdf(
 
     # ── METADATA BLOCK ────────────────────────────────────────
     pdf.set_font("helvetica", size=11)
-    pdf.cell(0, 6, _safe_str(f"Customer Name : {customer_name or 'N/A'}"), ln=1)
     pdf.cell(0, 6, _safe_str(f"Mobile Number : {customer_phone or 'N/A'}"), ln=1)
     pdf.cell(0, 6, _safe_str(f"User ID       : {user_id_evolve or 'N/A'}"), ln=1)
     pdf.cell(0, 6, _safe_str(f"Period        : {from_date} to {to_date}"), ln=1)

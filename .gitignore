@@ -1,2 +1,13 @@
 .env
 env/
+
+# Python cache files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Tool and test caches
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.cache/

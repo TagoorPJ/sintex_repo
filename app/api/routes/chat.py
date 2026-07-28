@@ -17,6 +17,10 @@ from fastapi import Request
 from app.utils.dealer_flow_stage_helper import update_dealer_flow_stage, reset_dealer_flow_stage  # ← ADD THIS
 from app.upload_flow import handler as upload_flow_handler
 from app.upload_flow.intent import classify_upload_intent
+from app.utils.evolve_member_validator import (
+    MemberValidationError,
+    validate_member_by_mobile,
+)
 
 logger = get_logger(__name__)
 
@@ -236,36 +240,26 @@ async def chat_endpoint(
     request_language = (request.language or "english").strip().lower()
 
     # ── 1. USER UPSERT ───────────────────────────────────────────
-    incoming_user_id = request.user_id_evolve
-    is_valid = is_valid_user_id_evolve(incoming_user_id)
     existing_user = await crud.get_user_by_mobile(
         db=db,
         mobile_number=request.mobile_number
     )
 
     previously_registered = existing_user.is_registered if existing_user else False
+    stored_user_id = (
+        existing_user.user_id_evolve
+        if existing_user and is_valid_user_id_evolve(existing_user.user_id_evolve)
+        else None
+    )
 
+    # Create/load the local user first, but deliberately defer Evolve member
+    # validation until after the plumber and language gates.
     user = await crud.upsert_user(
         db=db,
         mobile_number=request.mobile_number,
-        user_id_evolve=incoming_user_id if is_valid else None,
+        user_id_evolve=stored_user_id,
     )
-
-    # ── EVOLVE USER: force is_plumber=True immediately ───────────
-    # Do this right after upsert so every downstream gate (§4.5, §4.7, §4.8)
-    # sees is_plumber=True regardless of which section handles this turn.
-    # Covers all cases: is_plumber=NULL (never answered) or is_plumber=False
-    # (user said "No" in a previous session before getting an evolve ID).
-    if is_valid and user.is_plumber is not True:
-        _prev_is_plumber = user.is_plumber
-        await crud.set_user_is_plumber(db, user.id, True)
-        user.is_plumber = True
-        logger.info(
-            f"[/chat][mobile={request.mobile_number}] "
-            f"[EVOLVE USER] forced is_plumber=True (was {_prev_is_plumber!r})"
-        )
-
-    just_registered_now = is_valid and not previously_registered
+    just_registered_now = False
 
     # ── 2. CONVERSATION ──────────────────────────────────────────
     conversation = await crud.get_or_create_conversation(db=db, user_id=user.id)
@@ -283,19 +277,30 @@ async def chat_endpoint(
     # ── SESSION RESUME CHECK (5 MIN INACTIVITY) ─────────────────
     TIMEOUT_MINUTES = 5
 
-    last_message = await crud.get_last_message(
+    last_assistant_message_before_request = await crud.get_last_assistant_message(
         db=db,
         conversation_id=conversation.id
     )
 
     is_session_resumed = False
 
-    if last_message and last_message.created_at:
+    if (
+        last_assistant_message_before_request
+        and last_assistant_message_before_request.created_at
+    ):
         now = datetime.now(timezone.utc)
-        diff = now - last_message.created_at
+        last_assistant_at = last_assistant_message_before_request.created_at
+        if last_assistant_at.tzinfo is None:
+            last_assistant_at = last_assistant_at.replace(tzinfo=timezone.utc)
+        diff = now - last_assistant_at
 
         if diff > timedelta(minutes=TIMEOUT_MINUTES):
             is_session_resumed = True
+            logger.info(
+                f"{log_ctx} [SESSION RESET] last assistant response was "
+                f"{diff.total_seconds() / 60:.1f} minutes ago; "
+                "prior LLM history will be omitted"
+            )
 
     # ── 3. SET LANGUAGE ──────────────────────────────────────────
     if needs_language_ask:
@@ -337,160 +342,42 @@ async def chat_endpoint(
         message=user_message,
     )
 
-    # ── 4.5. LANGUAGE SELECTION HANDLER ─────────────────────────
-    if needs_language_ask:
-        lang_reply: str | None = None
-
-        # Evolve users (user_id_evolve present in payload or already in DB) skip
-        # the profession check and registration — they go straight to main menu.
-        user_has_evolve_id = is_valid_user_id_evolve(user.user_id_evolve)
-
-        if conversation.stage == ConversationStage.LANGUAGE_PENDING:
-            lang_reply = _parse_language_reply(user_message)
-            if lang_reply:
-                await crud.set_conversation_language(
-                    db=db, conversation_id=conversation.id, language=lang_reply
-                )
-                conversation.language = lang_reply
-
-                if user_has_evolve_id:
-                    # Evolve users: skip profession + registration entirely.
-                    # Force is_plumber=True regardless of any previous value
-                    # (covers NULL and False — user may have said "No" before getting an evolve ID).
-                    if user.is_plumber is not True:
-                        await crud.set_user_is_plumber(db, user.id, True)
-                        user.is_plumber = True
-                    await crud.set_conversation_stage(
-                        db, conversation.id, ConversationStage.NORMAL
-                    )
-                    logger.info(
-                        f"{log_ctx} [EVOLVE USER] language set to {lang_reply!r}; "
-                        "skipping profession & registration → NORMAL"
-                    )
-                elif not user.is_registered and user.is_plumber is None:
-                    # Regular unregistered users: ask profession next turn.
-                    await crud.set_conversation_stage(
-                        db, conversation.id, ConversationStage.PROFESSION_PENDING
-                    )
-                elif user.is_registered or user.is_plumber is True:
-                    # Already a registered / confirmed plumber — mid-conversation
-                    # language change. Go straight back to the main menu (NORMAL).
-                    await crud.set_conversation_stage(
-                        db, conversation.id, ConversationStage.NORMAL
-                    )
-                    logger.info(
-                        f"{log_ctx} [LANG CHANGE] mid-conversation language change for registered/plumber "
-                        f"→ language={lang_reply!r}, stage=NORMAL"
-                    )
-                else:
-                    await crud.set_conversation_stage(
-                        db, conversation.id, ConversationStage.MEMBER_CHECK
-                    )
-
-        if lang_reply is None:
-            if conversation.stage != ConversationStage.LANGUAGE_PENDING:
-                # First time asking — show full prompt
-                await crud.set_conversation_stage(
-                    db, conversation.id, ConversationStage.LANGUAGE_PENDING
-                )
-                lang_assistant_reply = _LANGUAGE_PICK_MSG
-            else:
-                # Already asked but user sent something unrecognised — re-ask with guidance
-                lang_assistant_reply = _LANGUAGE_REASK_MSG
-        else:
-            # Evolve users (have user_id_evolve) are treated as registered:
-            # show them the main menu directly instead of the plumber question.
-            if user_has_evolve_id or user.is_registered:
-                lang_assistant_reply = _LANG_CONFIRMATIONS_REGISTERED[lang_reply]
-            else:
-                lang_assistant_reply = _LANG_CONFIRMATIONS_UNREGISTERED[lang_reply]
-
-        await crud.save_message(
-            db=db,
-            conversation_id=conversation.id,
-            user_id=user.id,
-            sender="assistant",
-            message=lang_assistant_reply,
-        )
-
-        history_rows_lang = await crud.get_recent_messages(
-            db=db, conversation_id=conversation.id, limit=50
-        )
-        history_payload_lang = [
-            {
-                "sender": r.sender,
-                "message": r.message,
-                "created_at": r.created_at.isoformat() if hasattr(r, "created_at") else None,
-            }
-            for r in history_rows_lang
-        ]
-
-        _log_bot_msg(conversation.id, "language", lang_assistant_reply)
-
-        return ChatResponse(
-            conversation_id=conversation.id,
-            response=lang_assistant_reply,
-            history=history_payload_lang,
-            status="active",
-            language_change_requested=False,
-            target_language=None,
-            user_id_evolve=None,
-            user_id_evolve_present=False,
-        )
-
-    # ── 4.7. PROFESSION CHECK ────────────────────────────────────
-    # Runs only after language is confirmed (needs_language_ask is False here).
-    # If is_plumber has never been set (None), ask once, classify the reply
-    # with the LLM, persist to DB, then continue normally.
-    #
-    # Evolve users (user_id_evolve present) skip profession + registration entirely.
-    # They are considered trusted / already registered via the Evolve platform.
-    # We silently mark them as plumber=True so downstream gates never block them.
-    _has_evolve = is_valid_user_id_evolve(user.user_id_evolve)
-    if _has_evolve and user.is_plumber is not True:
-        # Force is_plumber=True for ALL evolve users regardless of any previous value
-        # (covers NULL, False — e.g. user said "No" before they got an evolve ID).
-        await crud.set_user_is_plumber(db, user.id, True)
-        user.is_plumber = True
-        logger.info(f"{log_ctx} [EVOLVE USER] forced is_plumber=True (was {user.is_plumber!r}), skipping profession check")
-
-    if user.is_plumber is None and not _has_evolve:
-        prof_lang = (conversation.language or "english").lower()
+    # ── 4.5. PROFESSION CHECK (FIRST GATE) ───────────────────────
+    # Every user must confirm they are a plumber before language selection or
+    # Evolve member validation. A stored member ID does not bypass this gate.
+    if user.is_plumber is None:
+        prof_lang = (
+            getattr(conversation, "language", None) or request_language or "english"
+        ).lower()
 
         if conversation.stage != ConversationStage.PROFESSION_PENDING:
-            # Language not yet set or stage not profession_pending — ask the question
             await crud.set_conversation_stage(
                 db, conversation.id, ConversationStage.PROFESSION_PENDING
             )
-            prof_reply = _PROFESSION_ASK.get(prof_lang, _PROFESSION_ASK["english"])
+            prof_reply = _PROFESSION_ASK.get(
+                prof_lang, _PROFESSION_ASK["english"]
+            )
         else:
-            # Stage is PROFESSION_PENDING — plumber question was already shown.
-            # Classify the user's reply.
             is_plumber_val = await classify_plumber_reply(
                 chatbot_orchestrator.llm, user_message
             )
-
             if is_plumber_val is None:
-                # Unclear answer — re-ask
-                prof_reply = _PROFESSION_REASK.get(prof_lang, _PROFESSION_REASK["english"])
+                prof_reply = _PROFESSION_REASK.get(
+                    prof_lang, _PROFESSION_REASK["english"]
+                )
             else:
-                # Got a clear answer — persist it.
                 await crud.set_user_is_plumber(db, user.id, is_plumber_val)
                 user.is_plumber = is_plumber_val
                 await crud.set_conversation_stage(
                     db, conversation.id, ConversationStage.MEMBER_CHECK
                 )
-
-                if not is_plumber_val:
-                    # User said NO → show blocked message now and return.
-                    # Must NOT fall through to section 4.8: that section would
-                    # re-classify the same message (e.g. "2") as a correction
-                    # attempt and loop back to re-asking the plumber question.
-                    prof_reply = _NOT_PLUMBER_BLOCKED.get(prof_lang, _NOT_PLUMBER_BLOCKED["english"])
-                else:
-                    # User said YES → fall through to section 5 so
-                    # registration/menu runs in the same turn.
-                    prof_reply = None
+                prof_reply = (
+                    None
+                    if is_plumber_val
+                    else _NOT_PLUMBER_BLOCKED.get(
+                        prof_lang, _NOT_PLUMBER_BLOCKED["english"]
+                    )
+                )
 
         if prof_reply is not None:
             await crud.save_message(
@@ -503,9 +390,7 @@ async def chat_endpoint(
             history_rows_prof = await crud.get_recent_messages(
                 db=db, conversation_id=conversation.id, limit=50
             )
-
             _log_bot_msg(conversation.id, "profession", prof_reply)
-
             return ChatResponse(
                 conversation_id=conversation.id,
                 response=prof_reply,
@@ -513,7 +398,11 @@ async def chat_endpoint(
                     {
                         "sender": r.sender,
                         "message": r.message,
-                        "created_at": r.created_at.isoformat() if hasattr(r, "created_at") else None,
+                        "created_at": (
+                            r.created_at.isoformat()
+                            if hasattr(r, "created_at")
+                            else None
+                        ),
                     }
                     for r in history_rows_prof
                 ],
@@ -524,26 +413,29 @@ async def chat_endpoint(
                 user_id_evolve_present=False,
             )
 
-    # ── 4.8. NON-PLUMBER GATE ────────────────────────────────────
-    # If user explicitly said they are NOT a plumber, block all further
-    # interaction — except if they are trying to correct their answer.
+    # Users who previously answered "No" remain blocked unless they explicitly
+    # correct that answer. This gate also runs before language/member lookup.
     if user.is_plumber is False:
-        prof_lang = (conversation.language or "english").lower()
-
+        prof_lang = (
+            getattr(conversation, "language", None) or request_language or "english"
+        ).lower()
         is_correction = await classify_correction_intent(
             chatbot_orchestrator.llm, user_message
         )
 
         if is_correction:
-            # Reset so profession question is asked again
             await crud.set_user_is_plumber(db, user.id, None)
             user.is_plumber = None
             await crud.set_conversation_stage(
                 db, conversation.id, ConversationStage.PROFESSION_PENDING
             )
-            blocked_reply = _PROFESSION_ASK.get(prof_lang, _PROFESSION_ASK["english"])
+            blocked_reply = _PROFESSION_ASK.get(
+                prof_lang, _PROFESSION_ASK["english"]
+            )
         else:
-            blocked_reply = _NOT_PLUMBER_BLOCKED.get(prof_lang, _NOT_PLUMBER_BLOCKED["english"])
+            blocked_reply = _NOT_PLUMBER_BLOCKED.get(
+                prof_lang, _NOT_PLUMBER_BLOCKED["english"]
+            )
 
         await crud.save_message(
             db=db,
@@ -555,9 +447,7 @@ async def chat_endpoint(
         history_rows_blocked = await crud.get_recent_messages(
             db=db, conversation_id=conversation.id, limit=50
         )
-
         _log_bot_msg(conversation.id, "non_plumber_gate", blocked_reply)
-
         return ChatResponse(
             conversation_id=conversation.id,
             response=blocked_reply,
@@ -565,7 +455,11 @@ async def chat_endpoint(
                 {
                     "sender": r.sender,
                     "message": r.message,
-                    "created_at": r.created_at.isoformat() if hasattr(r, "created_at") else None,
+                    "created_at": (
+                        r.created_at.isoformat()
+                        if hasattr(r, "created_at")
+                        else None
+                    ),
                 }
                 for r in history_rows_blocked
             ],
@@ -576,15 +470,117 @@ async def chat_endpoint(
             user_id_evolve_present=False,
         )
 
+    # ── 4.6. LANGUAGE SELECTION HANDLER (SECOND GATE) ────────────
+    if needs_language_ask:
+        lang_reply: str | None = None
+
+        if conversation.stage == ConversationStage.LANGUAGE_PENDING:
+            lang_reply = _parse_language_reply(user_message)
+            if lang_reply:
+                await crud.set_conversation_language(
+                    db=db, conversation_id=conversation.id, language=lang_reply
+                )
+                conversation.language = lang_reply
+                effective_language = lang_reply
+                await crud.set_conversation_stage(
+                    db, conversation.id, ConversationStage.MEMBER_CHECK
+                )
+
+        if lang_reply is None:
+            if conversation.stage != ConversationStage.LANGUAGE_PENDING:
+                # First time asking — show full prompt
+                await crud.set_conversation_stage(
+                    db, conversation.id, ConversationStage.LANGUAGE_PENDING
+                )
+                lang_assistant_reply = _LANGUAGE_PICK_MSG
+            else:
+                # Already asked but user sent something unrecognised — re-ask with guidance
+                lang_assistant_reply = _LANGUAGE_REASK_MSG
+            await crud.save_message(
+                db=db,
+                conversation_id=conversation.id,
+                user_id=user.id,
+                sender="assistant",
+                message=lang_assistant_reply,
+            )
+            history_rows_lang = await crud.get_recent_messages(
+                db=db, conversation_id=conversation.id, limit=50
+            )
+            history_payload_lang = [
+                {
+                    "sender": r.sender,
+                    "message": r.message,
+                    "created_at": (
+                        r.created_at.isoformat()
+                        if hasattr(r, "created_at")
+                        else None
+                    ),
+                }
+                for r in history_rows_lang
+            ]
+            _log_bot_msg(conversation.id, "language", lang_assistant_reply)
+            return ChatResponse(
+                conversation_id=conversation.id,
+                response=lang_assistant_reply,
+                history=history_payload_lang,
+                status="active",
+                language_change_requested=False,
+                target_language=None,
+                user_id_evolve=None,
+                user_id_evolve_present=False,
+            )
+
+    # ── 4.7. MEMBER LOOKUP (THIRD GATE) ──────────────────────────
+    # This is reached only after plumber confirmation and language selection.
+    # Use the database member ID when present; otherwise validate by mobile.
+    resolved_user_id = (
+        user.user_id_evolve
+        if is_valid_user_id_evolve(user.user_id_evolve)
+        else None
+    )
+    if (
+        not resolved_user_id
+        and conversation.stage != ConversationStage.REGISTRATION_FLOW
+    ):
+        try:
+            validation = await validate_member_by_mobile(request.mobile_number)
+        except MemberValidationError as exc:
+            logger.error(
+                "[MEMBER VALIDATION] unable to resolve user | mobile=%s",
+                request.mobile_number,
+            )
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail="Unable to validate membership right now. Please try again.",
+            ) from exc
+        resolved_user_id = validation.member_id
+
+    user = await crud.upsert_user(
+        db=db,
+        mobile_number=request.mobile_number,
+        user_id_evolve=resolved_user_id,
+    )
+    just_registered_now = bool(resolved_user_id) and not previously_registered
+
     # ── 5. FORCE STAGE FROM USER STATE ───────────────────────────
     is_registered_user = bool(user.user_id_evolve)
+    completed_onboarding_gates = (
+        conversation.stage == ConversationStage.MEMBER_CHECK
+    )
+    target_stage = (
+        ConversationStage.NORMAL
+        if is_registered_user
+        else ConversationStage.REGISTRATION_FLOW
+    )
+    if conversation.stage != target_stage:
+        await crud.set_conversation_stage(
+            db, conversation.id, target_stage
+        )
+        conversation.stage = target_stage
 
-    if not is_registered_user:
-        conversation.stage = ConversationStage.REGISTRATION_FLOW
-    else:
-        conversation.stage = ConversationStage.NORMAL
-
-    force_menu = False
+    # When the ordered gates have just resolved an existing member, suppress
+    # conversation history and show the main menu immediately.
+    force_menu = is_registered_user and completed_onboarding_gates
     force_registration_resume = False
 
     if is_session_resumed:
@@ -609,6 +605,13 @@ async def chat_endpoint(
         for row in history_rows
         if row.sender != "user" or row.message != request.message
     ]
+
+    # A timed-out session starts with clean LLM context. Keep the rows in the
+    # database for API/audit history, but do not expose them to language
+    # detection or the chat agent. Registered users receive the main menu;
+    # unregistered users remain behind the mandatory registration gate.
+    if is_session_resumed:
+        history = []
 
     last_messages = history[-10:]
 
@@ -740,11 +743,15 @@ async def chat_endpoint(
 
     # Find the most recent assistant message from history (used to detect
     # "user typed 2 right after the main menu").
-    last_assistant_message = ""
-    for row in reversed(history_rows):
-        if row.sender == "assistant":
-            last_assistant_message = row.message or ""
-            break
+    last_assistant_message = (
+        ""
+        if is_session_resumed
+        else (
+            last_assistant_message_before_request.message
+            if last_assistant_message_before_request
+            else ""
+        )
+    )
 
     # Read the JSON blob ONCE up front. Re-reading conversation.match_results_json
     # after any await db.commit() forces a lazy SQL reload, which inside the
@@ -802,6 +809,17 @@ async def chat_endpoint(
     ):
         upload_entry_intent = "open_submenu"
         logger.info(f"{log_ctx} [UPLOAD INTENT] deterministic main-menu pick: open_submenu")
+    elif (
+        current_upload_stage
+        and upload_flow_handler._parse_numbered_choice(user_message) is not None
+    ):
+        # Numbered replies inside the deterministic upload state machine
+        # never need LLM classification. In particular, dealer pagination
+        # option 11 must always reach the handler unchanged.
+        upload_entry_intent = "continue"
+        logger.info(
+            f"{log_ctx} [UPLOAD INTENT] deterministic numbered choice: continue"
+        )
     else:
         upload_entry_intent = await classify_upload_intent(
             llm=chatbot_orchestrator.llm,

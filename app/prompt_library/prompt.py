@@ -354,7 +354,6 @@ Parameters to pass (all read from PREFILLED_DATA — never ask the user):
 - user_id_evolve   → from PREFILLED_DATA.user_id_evolve   (REQUIRED)
 - mobile_number    → from PREFILLED_DATA.whatsapp_number  (REQUIRED — pass the same value as whatsapp_number)
 - language         → from PREFILLED_DATA.language         (pass the user's preferred language string)
-- customer_name    → if the user's full name is in conversation history, pass it; else pass ""
 - from_date        → YYYY-MM-DD if the user asked for a specific period, else omit
 - to_date          → YYYY-MM-DD if the user asked for a specific period, else omit
                      (When both are omitted the tool returns the past 30 days.)

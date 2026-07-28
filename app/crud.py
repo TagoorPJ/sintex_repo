@@ -21,6 +21,20 @@ async def get_last_message(db, conversation_id: int):
     return result.scalar_one_or_none()
 
 
+async def get_last_assistant_message(db, conversation_id: int):
+    """Return the latest bot reply, ignoring any unmatched user messages."""
+    result = await db.execute(
+        select(Message)
+        .where(
+            Message.conversation_id == conversation_id,
+            Message.sender == "assistant",
+        )
+        .order_by(Message.created_at.desc())
+        .limit(1)
+    )
+    return result.scalar_one_or_none()
+
+
 # ─── USER ────────────────────────────────────────────────────────────────────
 
 async def get_user_by_mobile(db: AsyncSession, mobile_number: str) -> Optional[User]:
@@ -39,33 +53,25 @@ async def upsert_user(
     user = await get_user_by_mobile(db, mobile_number)
 
     if user:
-        # Mirror the payload exactly: the incoming request is authoritative for
-        # user_id_evolve. A None value here (payload omitted it or sent an
-        # empty/"null"/"none"/"undefined" value, normalised upstream) clears the
-        # stored ID and demotes the user to unregistered.
-        #
-        # Use an explicit UPDATE statement instead of ORM attribute assignment.
-        # Attribute assignment + commit + refresh proved unreliable here:
-        # is_registered reverted to its old value after refresh, so the clear
-        # never persisted. An explicit update() always emits both SET columns.
-        new_is_registered = bool(user_id_evolve)
+        # A missing request value must never erase a member ID already stored
+        # in our database. The chat route resolves missing IDs through Evolve's
+        # mobile validation API before calling this function.
+        resolved_user_id = user_id_evolve or user.user_id_evolve
+        new_is_registered = bool(resolved_user_id)
         await db.execute(
             update(User)
             .where(User.id == user.id)
             .values(
-                user_id_evolve=user_id_evolve,
+                user_id_evolve=resolved_user_id,
                 is_registered=new_is_registered,
             )
         )
         await db.commit()
         await db.refresh(user)
 
-        # Audit log: record the authoritative user_id_evolve / is_registered
-        # state written on every upsert so registration transitions are always
-        # traceable in production logs.
         logger.info(
             f"[USER UPSERT] user_id={user.id} user_id_evolve={user.user_id_evolve!r} "
-            f"is_registered={user.is_registered} (incoming={user_id_evolve!r})"
+            f"is_registered={user.is_registered}"
         )
         logger.info("User updated", extra={"user_id": user.id, "mobile": mobile_number})
 

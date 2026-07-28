@@ -117,7 +117,6 @@ def _lang_msg(template_map: dict, language: Optional[str], **kwargs) -> str:
 async def reward_statement_tool(
     user_id_evolve: str,
     mobile_number: str,
-    customer_name: str = "",
     language: str = "english",
     from_date: Optional[str] = None,
     to_date: Optional[str] = None,
@@ -155,18 +154,14 @@ async def reward_statement_tool(
        - Comes from PREFILLED_DATA (whatsapp_number).
        - Used to send the PDF over WATI to the right person.
 
-    3. customer_name (OPTIONAL, string)
-       - The user's full name to print on the PDF cover.
-       - If unknown, pass an empty string and the PDF will print "N/A".
-
-    4. language (OPTIONAL, string)
+    3. language (OPTIONAL, string)
        - One of: "english", "hindi", "marathi", "hinglish".
        - Comes from PREFILLED_DATA. Defaults to "english".
        - Controls the wording of the chat acknowledgement only — the
          PDF body itself is in English (column headers, totals).
 
-    5. from_date (OPTIONAL, string, YYYY-MM-DD)
-    6. to_date   (OPTIONAL, string, YYYY-MM-DD)
+    4. from_date (OPTIONAL, string, YYYY-MM-DD)
+    5. to_date   (OPTIONAL, string, YYYY-MM-DD)
        - Defaults when both are omitted: from_date = today - 30 days,
                                          to_date   = today
          (i.e. the past 30-day window, inclusive of today).
@@ -279,7 +274,6 @@ async def reward_statement_tool(
         # ---------------------------------------------------------
         try:
             file_name, file_path = create_reward_statement_pdf(
-                customer_name=customer_name or "N/A",
                 customer_phone=phone,
                 user_id_evolve=str(user_id_evolve),
                 from_date=from_date,

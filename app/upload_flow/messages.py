@@ -169,10 +169,10 @@ _MATCH_FOOTER = {
 }
 
 _SHOW_MORE = {
-    "english": "{n}. Show more options",
-    "hindi": "{n}. और विकल्प देखें",
-    "marathi": "{n}. आणखी पर्याय पहा",
-    "hinglish": "{n}. Aur options dekhein",
+    "english": "11. Show more options",
+    "hindi": "11. और विकल्प देखें",
+    "marathi": "11. आणखी पर्याय पहा",
+    "hinglish": "11. Aur options dekhein",
 }
 
 
@@ -185,7 +185,7 @@ def dealer_match_list(
     """
     matches: list of {"serial": int, "firm_name": str, "dealer_code": str,
                        "city": str, "branch": str}
-    has_more: when True, appends a "Show more options" entry with serial = len(matches)+1
+    has_more: when True, appends the permanent "11. Show more options" entry
     query: empty string on subsequent pages (header switches to "More matching dealers:")
     """
     lang = _norm(language)
@@ -208,8 +208,7 @@ def dealer_match_list(
         lines.append(line)
 
     if has_more:
-        show_more_serial = len(matches) + 1
-        lines.append(_SHOW_MORE[lang].format(n=show_more_serial))
+        lines.append(_SHOW_MORE[lang])
 
     lines.append("")
     lines.append(_MATCH_FOOTER[lang])
