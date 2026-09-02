@@ -13,11 +13,23 @@ from indic_transliteration import sanscript
 from indic_transliteration.sanscript import transliterate as indic_transliterate
 
 from app.utils.logger import get_logger
+from app.utils.observability import timed_httpx_request
+from app.utils.evolve_member_validator import (
+    MemberValidationError,
+    validate_member_by_mobile,
+)
 
 # ── Load environment variables ────────────────────────────────
 load_dotenv()
 
 logger = get_logger(__name__)
+
+
+def format_wati_mobile_number(mobile_number: str) -> str:
+    digits = "".join(filter(str.isdigit, str(mobile_number)))
+    if len(digits) == 10:
+        return "91" + digits
+    return digits
 
 
 # ───────────────────────────────────────────────────────────────
@@ -45,7 +57,16 @@ async def call_evolve_api(payload: Dict[str, Any]) -> Dict[str, Any]:
     try:
         async with httpx.AsyncClient(timeout=15.0) as client:
             url = f"{BASE_URL}/register"
-            resp = await client.post(url, json=payload, headers=headers)
+            resp = await timed_httpx_request(
+                client,
+                "POST",
+                url,
+                api_name="evolve.register",
+                endpoint="/register",
+                log=logger,
+                json=payload,
+                headers=headers,
+            )
             resp.raise_for_status()
 
             logger.info(f"[EVOLVE] Success status={resp.status_code}")
@@ -62,8 +83,9 @@ async def call_evolve_api(payload: Dict[str, Any]) -> Dict[str, Any]:
 async def update_member_id_in_wati(mobile_number: str, member_id: str):
     WATI_BASE_URL = os.getenv("WATI_BASE_URL")
     WATI_TOKEN = os.getenv("WATI_TOKEN")
+    wati_mobile_number = format_wati_mobile_number(mobile_number)
 
-    url = f"{WATI_BASE_URL}/updateContactAttributes/{mobile_number}"
+    url = f"{WATI_BASE_URL}/updateContactAttributes/{wati_mobile_number}"
 
     headers = {
         "accept": "*/*",
@@ -82,10 +104,14 @@ async def update_member_id_in_wati(mobile_number: str, member_id: str):
 
     try:
         async with httpx.AsyncClient(timeout=10.0) as client:
-            resp = await client.post(url, json=payload, headers=headers)
+            resp = await client.post(
+                url,
+                json=payload,
+                headers=headers,
+            )
 
             if resp.status_code == 200:
-                logger.info(f"[WATI] memberID updated for {mobile_number}")
+                logger.info(f"[WATI] memberID updated for {wati_mobile_number}")
             else:
                 logger.error(f"[WATI] Failed: {resp.status_code} | {resp.text}")
 
@@ -333,17 +359,72 @@ async def submit_user_registration(payload: str) -> str:
     api_result = await call_evolve_api(api_payload)
 
     if api_result.get("status") == "error":
-        logger.error(f"[REGISTRATION TOOL] API failed: {api_result}")
         api_message = (api_result.get("message") or "").lower()
-        if "pincode" in api_message:
+
+        # Evolve may know this mobile as an existing member while our local
+        # database is missing its member ID. Recover that ID through the
+        # validation endpoint instead of leaving the user stuck in registration.
+        if "already registered" in api_message:
+            logger.info(
+                "[REGISTRATION TOOL] Existing Evolve registration detected; "
+                "recovering member ID through validation | mobile=%s",
+                mobile,
+            )
+            raw_mobile_digits = "".join(c for c in raw_mobile if c.isdigit())
+            validation_candidates = []
+            for candidate in (raw_mobile_digits, mobile, f"91{mobile}"):
+                if candidate and candidate not in validation_candidates:
+                    validation_candidates.append(candidate)
+
+            validation = None
+            for candidate in validation_candidates:
+                try:
+                    candidate_result = await validate_member_by_mobile(candidate)
+                except MemberValidationError:
+                    logger.warning(
+                        "[REGISTRATION TOOL] Existing-member validation attempt "
+                        "failed | mobile=%s",
+                        candidate,
+                    )
+                    continue
+                if candidate_result.is_valid and candidate_result.member_id:
+                    validation = candidate_result
+                    break
+
+            if validation is not None:
+                if validation.is_valid and validation.member_id:
+                    api_result = {
+                        "status": "success",
+                        "member_id": validation.member_id,
+                        "message": "Existing registration recovered.",
+                    }
+                    logger.info(
+                        "[REGISTRATION TOOL] Existing member ID recovered | "
+                        "mobile=%s | member_id=%s",
+                        mobile,
+                        validation.member_id,
+                    )
+            else:
+                logger.error(
+                    "[REGISTRATION TOOL] Evolve reported already registered "
+                    "but validation found no member ID | mobile=%s",
+                    mobile,
+                )
+
+        if api_result.get("status") == "success":
+            pass
+        elif "pincode" in api_message:
+            logger.error(f"[REGISTRATION TOOL] API failed: {api_result}")
             return json.dumps({
                 "status": "pincode_error",
                 "message": "pincode_not_found",
             })
-        return json.dumps({
-            "status": "error",
-            "message": "Registration failed. Please try again later.",
-        })
+        else:
+            logger.error(f"[REGISTRATION TOOL] API failed: {api_result}")
+            return json.dumps({
+                "status": "error",
+                "message": "Registration failed. Please try again later.",
+            })
 
     logger.info("[REGISTRATION TOOL] Success")
 
@@ -351,11 +432,8 @@ async def submit_user_registration(payload: str) -> str:
     # ✅ CALL WATI AFTER REGISTRATION SUCCESS
     if user_id_evolve_generated:
         try:
-            # WATI expects country code → so use raw_mobile cleaned
-            mobile_for_wati = raw_mobile.replace("+", "").replace(" ", "")
-
             await update_member_id_in_wati(
-                mobile_number=mobile_for_wati,
+                mobile_number=raw_mobile,
                 member_id=user_id_evolve_generated
             )
         except Exception as e:

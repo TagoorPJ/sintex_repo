@@ -146,12 +146,10 @@ async def classify_upload_intent(
     )
 
     try:
-        response = await llm.ainvoke(
-            [
-                SystemMessage(content=system_prompt),
-                HumanMessage(content=msg),
-            ]
-        )
+        response = await llm.ainvoke([
+            SystemMessage(content=system_prompt),
+            HumanMessage(content=msg),
+        ])
         raw = (response.content or "").strip()
         logger.info(f"[upload_intent] raw={raw!r} stage={current_stage!r} msg={msg[:80]!r}")
 

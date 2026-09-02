@@ -5,6 +5,7 @@ from langchain.tools import tool
 from dotenv import load_dotenv
 import os
 from app.utils.logger import get_logger  # adjust path
+from app.utils.observability import timed_httpx_request
 logger = get_logger(__name__)
 load_dotenv()
 
@@ -137,8 +138,13 @@ async def rewards_tool(
             if action == "balance":
                 url = f"{BASE_URL}/balance-inquiry"
 
-                resp = await client.post(
+                resp = await timed_httpx_request(
+                    client,
+                    "POST",
                     url,
+                    api_name="evolve.balance_inquiry",
+                    endpoint="/balance-inquiry",
+                    log=logger,
                     json={"user_id": user_id_evolve},
                     headers=HEADERS
                 )
@@ -174,8 +180,13 @@ async def rewards_tool(
                     "offset": offset
                 }
 
-                resp = await client.post(
+                resp = await timed_httpx_request(
+                    client,
+                    "POST",
                     url,
+                    api_name="evolve.points_history",
+                    endpoint="/points-history",
+                    log=logger,
                     json=payload_data,
                     headers=HEADERS
                 )
@@ -223,8 +234,13 @@ async def rewards_tool(
             elif action == "tier":
                 url = f"{BASE_URL}/tier-status"
 
-                resp = await client.post(
+                resp = await timed_httpx_request(
+                    client,
+                    "POST",
                     url,
+                    api_name="evolve.tier_status",
+                    endpoint="/tier-status",
+                    log=logger,
                     json={"user_id": user_id_evolve},
                     headers=HEADERS
                 )

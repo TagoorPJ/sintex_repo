@@ -318,9 +318,30 @@ def _is_main_menu_text(text: str) -> bool:
     if not text:
         return False
 
-    numbered = re.findall(r"(?m)^\s*([1-9])\s*[\.\)]", text)
-    distinct = set(numbered)
-    return {"1", "2", "3", "4"}.issubset(distinct)
+    options = {
+        match.group(1): match.group(2).casefold()
+        for match in re.finditer(r"(?m)^\s*([1-9])\s*[\.\)]\s*(.+?)\s*$", text)
+    }
+
+    reward_terms = (
+        "my rewards",
+        "mere rewards",
+        "मेरे रिवॉर्ड्स",
+        "माझे रिवॉर्ड्स",
+    )
+    upload_terms = (
+        "upload purchase",
+        "purchase upload",
+        "खरीद अपलोड",
+        "खरेदी अपलोड",
+    )
+
+    option_1 = options.get("1", "")
+    option_2 = options.get("2", "")
+    return (
+        any(term in option_1 for term in reward_terms)
+        and any(term in option_2 for term in upload_terms)
+    )
 
 
 # ──────────────────────────────────────────────────────────────────────

@@ -7,6 +7,7 @@ from dotenv import load_dotenv
 from langchain.tools import tool
 
 from app.utils.logger import get_logger
+from app.utils.observability import timed_httpx_request
 
 load_dotenv()
 logger = get_logger(__name__)
@@ -102,8 +103,13 @@ async def create_claim_tool(
 
     try:
         async with httpx.AsyncClient(timeout=REQUEST_TIMEOUT) as client:
-            response = await client.post(
+            response = await timed_httpx_request(
+                client,
+                "POST",
                 url,
+                api_name="evolve.claim_create",
+                endpoint="/claim/create",
+                log=logger,
                 json=payload,
                 headers=HEADERS
             )

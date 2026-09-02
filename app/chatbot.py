@@ -303,7 +303,6 @@ IMPORTANT CONTEXT:
                 "completion": cb.completion_tokens,
                 "total": cb.total_tokens,
             }
-
             log_token_usage(conv_id, TokenUsage(
                 prompt=cb.prompt_tokens,
                 completion=cb.completion_tokens,

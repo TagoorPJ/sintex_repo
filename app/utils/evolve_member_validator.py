@@ -8,6 +8,7 @@ import httpx
 from dotenv import load_dotenv
 
 from app.utils.logger import get_logger
+from app.utils.observability import timed_httpx_request
 
 load_dotenv()
 logger = get_logger(__name__)
@@ -50,8 +51,13 @@ async def validate_member_by_mobile(mobile_number: str) -> MemberValidationResul
 
     try:
         async with httpx.AsyncClient(timeout=timeout) as client:
-            response = await client.post(
+            response = await timed_httpx_request(
+                client,
+                "POST",
                 f"{base_url}/validate",
+                api_name="evolve.validate_member",
+                endpoint="/validate",
+                log=logger,
                 headers=headers,
                 json=payload,
             )

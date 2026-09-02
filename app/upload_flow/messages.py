@@ -132,10 +132,18 @@ def dealer_fetch_failed(language: str) -> str:
 
 
 _NO_DEALERS_FOUND = {
-    "english": "No dealer firms are linked to your account yet.",
-    "hindi": "आपके खाते से अभी कोई डीलर फर्म जुड़ी नहीं है।",
-    "marathi": "तुमच्या खात्याशी अद्याप कोणतीही डीलर फर्म जोडलेली नाही.",
-    "hinglish": "Aapke account se abhi koi dealer firm linked nahi hai.",
+    "english": (
+        "No dealer firms are linked to your account yet."
+    ),
+    "hindi": (
+        "आपके account से अभी कोई dealer firm linked नहीं है।"
+    ),
+    "marathi": (
+        "तुमच्या account शी अजून कोणतीही dealer firm linked नाही."
+    ),
+    "hinglish": (
+        "Aapke account se abhi koi dealer firm linked nahi hai."
+    ),
 }
 
 

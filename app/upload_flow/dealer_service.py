@@ -26,6 +26,7 @@ from unidecode import unidecode
 from dotenv import load_dotenv
 
 from app.utils.logger import get_logger
+from app.utils.observability import timed_httpx_request
 
 load_dotenv()
 logger = get_logger(__name__)
@@ -143,7 +144,8 @@ async def fetch_dealers(user_id_evolve: str, force: bool = False) -> Optional[Li
 
     Returns:
         list of {"firm_name": str, "dealer_code": str} on success,
-        None on any failure (network, non-200, empty result, ...).
+        [] when Evolve succeeds but returns no usable dealers,
+        None on any failure (network, non-200, invalid response, ...).
     """
     user_id = str(user_id_evolve).strip()
     if not user_id or user_id.lower() in ("", "none", "null", "undefined"):
@@ -173,7 +175,16 @@ async def fetch_dealers(user_id_evolve: str, force: bool = False) -> Optional[Li
 
     try:
         async with httpx.AsyncClient(timeout=REQUEST_TIMEOUT) as client:
-            resp = await client.post(url, json=payload, headers=HEADERS)
+            resp = await timed_httpx_request(
+                client,
+                "POST",
+                url,
+                api_name="evolve.find_dealer",
+                endpoint="/find-dealer",
+                log=logger,
+                json=payload,
+                headers=HEADERS,
+            )
     except httpx.TimeoutException:
         logger.error("[dealer_service] timeout fetching dealers")
         return None
@@ -214,8 +225,11 @@ async def fetch_dealers(user_id_evolve: str, force: bool = False) -> Optional[Li
             })
 
     if not dealers:
-        logger.warning("[dealer_service] find-dealer returned an empty dealer list")
-        return None
+        logger.warning(
+            "[dealer_service] find-dealer returned success with empty dealer_list | "
+            f"response={data}"
+        )
+        return []
 
     _cache_set(user_id, dealers)
     logger.info(f"[dealer_service] cached {len(dealers)} dealers for user {user_id}")
@@ -267,7 +281,16 @@ async def create_claim(
 
     try:
         async with httpx.AsyncClient(timeout=REQUEST_TIMEOUT) as client:
-            resp = await client.post(url, json=payload, headers=HEADERS)
+            resp = await timed_httpx_request(
+                client,
+                "POST",
+                url,
+                api_name="evolve.claim_create",
+                endpoint="/claim/create",
+                log=logger,
+                json=payload,
+                headers=HEADERS,
+            )
     except httpx.TimeoutException:
         logger.error("[dealer_service] timeout creating claim")
         return {"ok": False, "message": "Request timed out.", "raw": None}

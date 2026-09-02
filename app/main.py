@@ -55,6 +55,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+
 # ─── Global exception handler ─────────────────────────────────────────────────
 
 @app.exception_handler(Exception)
@@ -97,4 +98,4 @@ if __name__ == "__main__":
         port=int(os.getenv("PORT", 8000)),
         reload=os.getenv("APP_ENV", "development") == "development",
         log_level=os.getenv("LOG_LEVEL", "info").lower(),
-    )  
+    )

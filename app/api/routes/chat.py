@@ -9,6 +9,7 @@ from app.chatbot import chatbot_orchestrator
 from app.database import get_db
 from app.schemas import ChatRequest, ChatResponse
 from app.utils.logger import get_logger
+from app.utils.observability import bind_trace_context
 from app.models import ConversationStage
 from datetime import datetime, timedelta, timezone
 from app.utils.intent_detector import detect_intent_and_language_change_llm, classify_plumber_reply, classify_correction_intent
@@ -267,7 +268,13 @@ async def chat_endpoint(
     # Per-request context prefix used in all downstream log lines so each
     # log can be tied back to a specific user + conversation.
     log_ctx = f"[user_id={user.id} conv_id={conversation.id}]"
+    trace_id = bind_trace_context(
+        conversation_id=conversation.id,
+        user_id=user.id,
+        mobile_number=request.mobile_number,
+    )
     logger.info(f"{log_ctx} resolved user (mobile={request.mobile_number}, is_registered={user.is_registered})")
+    logger.info(f"{log_ctx} [TRACE] trace_id={trace_id}")
 
     # ── 2.5. LANGUAGE-SELECTION GATE ─────────────────────────────
     # Ask ANY user (registered or not) their preferred language whenever

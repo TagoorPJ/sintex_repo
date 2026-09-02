@@ -11,6 +11,7 @@ from dotenv import load_dotenv
 from langchain.tools import tool
 
 from app.utils.logger import get_logger
+from app.utils.observability import timed_httpx_request
 
 load_dotenv()
 logger = get_logger(__name__)
@@ -74,7 +75,10 @@ async def _download_and_save_wati_media(file_name: str) -> tuple[str | None, str
 
     try:
         async with httpx.AsyncClient(timeout=30.0) as client:
-            resp = await client.get(wati_url, headers=headers)
+            resp = await client.get(
+                wati_url,
+                headers=headers,
+            )
 
         if resp.status_code != 200:
             logger.error(f"[SUPPORT TICKET] WATI media fetch failed: {resp.status_code}")
@@ -346,7 +350,16 @@ async def support_ticket_tool(payload: str) -> str:
 
     try:
         async with httpx.AsyncClient(timeout=REQUEST_TIMEOUT) as client:
-            response = await client.post(url, json=api_payload, headers=HEADERS)
+            response = await timed_httpx_request(
+                client,
+                "POST",
+                url,
+                api_name="evolve.support_ticket",
+                endpoint="/support-ticket",
+                log=logger,
+                json=api_payload,
+                headers=HEADERS,
+            )
 
         logger.info(f"[support_ticket_tool] API Status={response.status_code}")
         logger.info(f"[support_ticket_tool] API Response={response.text}")

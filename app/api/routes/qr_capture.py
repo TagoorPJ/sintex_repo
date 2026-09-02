@@ -14,6 +14,7 @@ from app import crud
 from app.database import get_db
 from app.chatbot import chatbot_orchestrator
 from app.utils.logger import get_logger
+from app.utils.observability import bind_trace_context, timed_requests_request
 from app.schemas import QRScanRequest
 logger = get_logger(__name__)
 
@@ -101,9 +102,6 @@ async def qr_callback(
 ):
 
     try:
-        # ----------------------------------------------
-        # FIND USER
-        # ----------------------------------------------
         user = await crud.get_user_by_mobile(
             db=db,
             mobile_number=request.whatsapp_number
@@ -115,12 +113,15 @@ async def qr_callback(
                 detail="User not found"
             )
 
-        # ----------------------------------------------
-        # FIND CONVERSATION
-        # ----------------------------------------------
         conversation = await crud.get_or_create_conversation(
             db=db,
             user_id=user.id
+        )
+
+        bind_trace_context(
+            conversation_id=conversation.id,
+            user_id=user.id,
+            mobile_number=user.mobile_number,
         )
 
         language = conversation.language or "english"
@@ -157,8 +158,12 @@ async def qr_callback(
             else:
                 logger.warning("[QR] dealer_code became empty after cleaning")
         logger.info(f"[QR] payload to capture-qr api: {capture_payload}")
-        response = requests.post(
+        response = await timed_requests_request(
+            "POST",
             api_url,
+            api_name="evolve.capture_qr",
+            endpoint="/capture-qr",
+            log=logger,
             headers={
                 "accept": "*/*",
                 "program": program,

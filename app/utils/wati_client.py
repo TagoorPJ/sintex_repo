@@ -102,7 +102,12 @@ async def send_session_document(
         async with httpx.AsyncClient(timeout=WATI_TIMEOUT, verify=False) as client:
             with open(file_path, "rb") as fh:
                 files = {"file": (file_name, fh, "application/pdf")}
-                resp = await client.post(url, params=params, headers=headers, files=files)
+                resp = await client.post(
+                    url,
+                    params=params,
+                    headers=headers,
+                    files=files,
+                )
     except httpx.TimeoutException:
         logger.error("[wati_client] Timeout sending file to WATI")
         return {"ok": False, "status": None, "message": "WATI request timed out", "raw": None}

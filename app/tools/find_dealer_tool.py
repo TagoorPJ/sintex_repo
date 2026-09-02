@@ -10,6 +10,7 @@ from langchain.tools import tool
 from rapidfuzz import fuzz
 
 from app.utils.logger import get_logger
+from app.utils.observability import timed_httpx_request
 
 load_dotenv()
 logger = get_logger(__name__)
@@ -113,7 +114,8 @@ def _get_cache(store: dict, key: str):
 async def _fetch_and_cache_dealers(user_id: str) -> list | None:
     """
     Internal helper: fetches dealer list from API and stores in DEALER_CACHE.
-    Returns list of dealers on success, None on any failure.
+    Returns list of dealers on success, [] when Evolve succeeds with an
+    empty dealer_list, and None on any failure.
     """
     user_id_int = _safe_int(user_id)
     if not user_id_int:
@@ -126,7 +128,16 @@ async def _fetch_and_cache_dealers(user_id: str) -> list | None:
 
     try:
         async with httpx.AsyncClient(timeout=REQUEST_TIMEOUT) as client:
-            response = await client.post(url, json=payload, headers=HEADERS)
+            response = await timed_httpx_request(
+                client,
+                "POST",
+                url,
+                api_name="evolve.find_dealer",
+                endpoint="/find-dealer",
+                log=logger,
+                json=payload,
+                headers=HEADERS,
+            )
 
         if response.status_code != 200:
             logger.error(f"[find_dealer_tool] API returned {response.status_code}")
@@ -155,7 +166,10 @@ async def _fetch_and_cache_dealers(user_id: str) -> list | None:
                 })
 
         if not all_dealers:
-            return None
+            logger.warning(
+                f"[find_dealer_tool] API returned success with empty dealer_list: {result}"
+            )
+            return []
 
         _set_cache(DEALER_CACHE, user_id, all_dealers)
         logger.info(f"[find_dealer_tool] Cached {len(all_dealers)} dealers for user {user_id}")
@@ -384,8 +398,12 @@ async def find_dealer_tool(
         if not all_dealers:
             return _json_response(
                 "error",
-                "Unable to load dealer list. Please try again.",
-                {"dealer_flow_stage": "awaiting_dealer_name"}
+                "Evolve returned success, but dealer_list is empty for this account.",
+                {
+                    "dealer_flow_stage": "awaiting_dealer_name",
+                    "evolve_status": "success",
+                    "dealer_list_count": 0,
+                }
             )
 
         query = search_name.strip()
@@ -441,6 +459,17 @@ async def find_dealer_tool(
             "error",
             "Unable to fetch dealer list. Please try again.",
             {"dealer_flow_stage": "initial"}
+        )
+
+    if not all_dealers:
+        return _json_response(
+            "error",
+            "Evolve returned success, but dealer_list is empty for this account.",
+            {
+                "dealer_flow_stage": "initial",
+                "evolve_status": "success",
+                "dealer_list_count": 0,
+            }
         )
 
     return _json_response(

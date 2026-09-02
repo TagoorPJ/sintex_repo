@@ -12,6 +12,7 @@ from dotenv import load_dotenv
 from langchain.tools import tool
 
 from app.utils.logger import get_logger
+from app.utils.observability import timed_httpx_request
 from app.utils.pdf_utils import create_reward_statement_pdf
 from app.utils.wati_client import send_session_document
 
@@ -234,7 +235,16 @@ async def reward_statement_tool(
 
     try:
         async with httpx.AsyncClient(timeout=REQUEST_TIMEOUT) as client:
-            response = await client.post(url, json=payload, headers=HEADERS)
+            response = await timed_httpx_request(
+                client,
+                "POST",
+                url,
+                api_name="evolve.reward_statement",
+                endpoint="/reward-statement",
+                log=logger,
+                json=payload,
+                headers=HEADERS,
+            )
 
         logger.info(f"[reward_statement_tool] API Status={response.status_code}")
 
