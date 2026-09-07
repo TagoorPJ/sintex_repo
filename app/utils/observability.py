@@ -12,6 +12,8 @@ from sqlalchemy import func, select
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 
 from app.database import AsyncSessionLocal
+from app.analytics.feature_events import API_FEATURE_EVENTS
+from app.analytics.feature_usage_tracker import record_feature_result
 from app.models import ExternalApiDailyCount
 from app.utils.logger import get_logger
 
@@ -481,6 +483,13 @@ async def timed_httpx_request(
             response_text=response_text,
             error=response_error,
         )
+        feature_event = API_FEATURE_EVENTS.get(api_name)
+        if feature_event:
+            await record_feature_result(
+                feature_event,
+                success=success,
+                reason=response_error,
+            )
 
 
 async def timed_requests_request(
@@ -538,3 +547,10 @@ async def timed_requests_request(
             response_text=response_text,
             error=response_error,
         )
+        feature_event = API_FEATURE_EVENTS.get(api_name)
+        if feature_event:
+            await record_feature_result(
+                feature_event,
+                success=success,
+                reason=response_error,
+            )

@@ -22,6 +22,7 @@ from app.utils.evolve_member_validator import (
     MemberValidationError,
     validate_member_by_mobile,
 )
+from app.analytics.feature_usage_tracker import bind_feature_usage_context
 
 logger = get_logger(__name__)
 
@@ -341,12 +342,20 @@ async def chat_endpoint(
 
     _log_user_msg(conversation.id, user_message)
 
-    await crud.save_message(
+    user_msg = await crud.save_message(
         db=db,
         conversation_id=conversation.id,
         user_id=user.id,
         sender="user",
         message=user_message,
+    )
+
+    bind_feature_usage_context(
+        user_id=user.id,
+        conversation_id=conversation.id,
+        message_id=user_msg.id,
+        mobile_number=request.mobile_number,
+        user_message=user_message,
     )
 
     # ── 4.5. PROFESSION CHECK (FIRST GATE) ───────────────────────

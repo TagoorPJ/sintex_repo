@@ -164,7 +164,6 @@ async def rewards_tool(
                     })
 
                 points = result.get("points", 0)
-
                 return json.dumps({
                     "status": "success",
                     "message": f"Your current reward balance is {points} points."
@@ -206,7 +205,6 @@ async def rewards_tool(
                     })
 
                 transactions = result.get("transactions", [])
-
                 if not transactions:
                     return json.dumps({
                         "status": "success",

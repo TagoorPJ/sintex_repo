@@ -13,8 +13,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app import crud
 from app.database import get_db
 from app.chatbot import chatbot_orchestrator
+from app.analytics.feature_usage_tracker import record_feature_result
 from app.utils.logger import get_logger
-from app.utils.observability import bind_trace_context, timed_requests_request
+from app.utils.observability import bind_trace_context, timed_requests_request, _success_from_response
 from app.schemas import QRScanRequest
 logger = get_logger(__name__)
 
@@ -88,6 +89,34 @@ Message:
 """
     result = await chatbot_orchestrator.llm.ainvoke(prompt)
     return result.content.strip()
+
+
+async def _record_failed_qr_attempt(db, user, conversation, reason: str) -> None:
+    """Persist a QR failure even when the callback stops before its normal reply."""
+    if user is None or conversation is None:
+        return
+    try:
+        attempt_message = await crud.save_message(
+            db=db,
+            conversation_id=conversation.id,
+            user_id=user.id,
+            sender="tool",
+            message="[QR scan attempt failed]",
+        )
+        await record_feature_result(
+            "upload.scan_qr",
+            success=False,
+            reason=reason,
+            context={
+                "user_id": user.id,
+                "conversation_id": conversation.id,
+                "message_id": attempt_message.id,
+                "mobile_number": user.mobile_number,
+                "raw_user_message": "[QR callback attempt]",
+            },
+        )
+    except Exception:
+        logger.exception("[QR] unable to record failed feature attempt")
 # ==========================================================
 # ENDPOINT
 # ==========================================================
@@ -100,7 +129,8 @@ async def qr_callback(
     request: QRScanRequest,
     db: AsyncSession = Depends(get_db)
 ):
-
+    user = None
+    conversation = None
     try:
         user = await crud.get_user_by_mobile(
             db=db,
@@ -204,12 +234,26 @@ async def qr_callback(
         # ----------------------------------------------
         # SAVE HISTORY
         # ----------------------------------------------
-        await crud.save_message(
+        completion_message = await crud.save_message(
             db=db,
             conversation_id=conversation.id,
             user_id=user.id,
             sender="assistant",
             message=final_message
+        )
+
+        qr_success = isinstance(data, dict) and _success_from_response(response, (200, 201))
+        await record_feature_result(
+            "upload.scan_qr",
+            success=qr_success,
+            reason=None if qr_success else str(data.get("message") or "QR scan failed"),
+            context={
+                "user_id": user.id,
+                "conversation_id": conversation.id,
+                "message_id": completion_message.id,
+                "mobile_number": user.mobile_number,
+                "raw_user_message": "[QR callback attempt]",
+            },
         )
 
         return {
@@ -220,6 +264,7 @@ async def qr_callback(
 
     except requests.HTTPError as e:
         logger.error(f"QR HTTP Error: {str(e)}", exc_info=True)
+        await _record_failed_qr_attempt(db, user, conversation, str(e))
         raise HTTPException(
             status_code=502,
             detail="External API failed"
@@ -227,6 +272,7 @@ async def qr_callback(
 
     except Exception as e:
         logger.error(f"QR Callback Failed: {str(e)}", exc_info=True)
+        await _record_failed_qr_attempt(db, user, conversation, str(e))
         raise HTTPException(
             status_code=500,
             detail="QR processing failed"

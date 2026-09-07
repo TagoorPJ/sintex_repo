@@ -381,7 +381,6 @@ async def support_ticket_tool(payload: str) -> str:
             )
 
         ticket_id = result.get("ticket_id") or result.get("id") or result.get("ticketId")
-
         # ── Send email notification ──────────────────────────────
         try:
             import asyncio

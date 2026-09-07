@@ -6,6 +6,7 @@ import httpx
 from dotenv import load_dotenv
 from langchain.tools import tool
 
+from app.analytics.feature_usage_tracker import record_feature_result
 from app.utils.logger import get_logger
 
 load_dotenv()
@@ -71,7 +72,7 @@ async def sintex_rag_tool(question: str) -> str:
     """
 
     q = (question or "").strip()
-    if not q:
+    if not q or q.casefold() in {"1", "2", "3", "4", "product help", "help", "my rewards"}:
         return _json_response("error", "Question is required.")
 
     if not RAG_API_URL:
@@ -89,23 +90,52 @@ async def sintex_rag_tool(question: str) -> str:
             )
     except httpx.TimeoutException:
         logger.error("[sintex_rag_tool] timeout")
+        await record_feature_result(
+            "product_help.rag_search", success=False, reason="Knowledge base timed out"
+        )
         return _json_response("error", "Knowledge base timed out. Please try again.")
     except Exception:
         logger.exception("[sintex_rag_tool] request failed")
+        await record_feature_result(
+            "product_help.rag_search", success=False, reason="Knowledge base request failed"
+        )
         return _json_response("error", "Could not reach the knowledge base.")
 
     if resp.status_code != 200:
         logger.error(f"[sintex_rag_tool] non-200: {resp.status_code} | {resp.text[:300]}")
+        await record_feature_result(
+            "product_help.rag_search",
+            success=False,
+            reason=f"Knowledge base HTTP {resp.status_code}",
+        )
         return _json_response("error", "Knowledge base returned an error.")
 
     try:
         data = resp.json()
     except Exception:
         logger.exception("[sintex_rag_tool] invalid JSON from RAG")
+        await record_feature_result(
+            "product_help.rag_search", success=False, reason="Invalid knowledge base response"
+        )
         return _json_response("error", "Knowledge base returned invalid data.")
 
+    if not isinstance(data, dict) or data.get("status") in {"error", "failed", "failure"} or data.get("success") is False:
+        await record_feature_result(
+            "product_help.rag_search",
+            success=False,
+            reason=str(data.get("message") if isinstance(data, dict) else "Invalid response"),
+        )
+        return _json_response("error", "Knowledge base returned an error.")
+
     chunks = data.get("chunks") or []
+    if not isinstance(chunks, list) or any(not isinstance(chunk, dict) for chunk in chunks):
+        await record_feature_result(
+            "product_help.rag_search", success=False, reason="Invalid knowledge base chunks"
+        )
+        return _json_response("error", "Knowledge base returned invalid data.")
     if not chunks:
+        # A completed search counts even when there are no matching documents.
+        await record_feature_result("product_help.rag_search", success=True)
         return _json_response(
             "success",
             "No matching content found in Sintex documents.",
@@ -130,6 +160,7 @@ async def sintex_rag_tool(question: str) -> str:
         f"[sintex_rag_tool] returned {len(blocks)} chunks | sources={sources}"
     )
 
+    await record_feature_result("product_help.rag_search", success=True)
     return _json_response(
         "success",
         merged,

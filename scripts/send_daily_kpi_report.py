@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import argparse
 import asyncio
+import logging
 import os
 import smtplib
 import sys
@@ -9,6 +10,7 @@ from dataclasses import dataclass
 from datetime import date, datetime, time, timedelta, timezone
 from email.message import EmailMessage
 from html import escape
+from io import BytesIO
 from pathlib import Path
 from typing import Any
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
@@ -34,6 +36,23 @@ load_dotenv(BASE_DIR / ".env")
 
 DEFAULT_TIMEZONE = "Asia/Kolkata"
 DEFAULT_SUBJECT_PREFIX = "Sintex Agent KPI Report"
+logger = logging.getLogger("daily_kpi_report")
+
+
+def setup_logging(log_file: str | None = None) -> None:
+    handlers: list[logging.Handler] = [logging.StreamHandler(sys.stdout)]
+    if log_file:
+        path = Path(log_file).expanduser()
+        path.parent.mkdir(parents=True, exist_ok=True)
+        handlers.append(logging.FileHandler(path, encoding="utf-8"))
+
+    logging.basicConfig(
+        level=logging.INFO,
+        format="%(asctime)s | %(levelname)s | %(name)s | %(message)s",
+        datefmt="%Y-%m-%d %H:%M:%S %Z",
+        handlers=handlers,
+        force=True,
+    )
 
 RESPONSIVE_EMAIL_CSS = """
 <style>
@@ -157,11 +176,28 @@ FLOW_COMPLETION_KPIS = {
     },
 }
 
+# Share the exact completion categories used by the application.
+if str(BASE_DIR) not in sys.path:
+    sys.path.insert(0, str(BASE_DIR))
+from app.analytics.feature_events import (
+    COMPLETION_DETECTION_METHOD,
+    FAILURE_DETECTION_METHOD,
+    FEATURE_EVENTS,
+    FEATURE_RESULT_METHODS,
+)
+
+FEATURE_USAGE_COLUMNS = [name for name, _ in FEATURE_EVENTS.values()]
+
+
 KPI_DEFINITIONS = [
     ("Total Unique Users", "Distinct users who sent at least one message that day."),
     ("Total User Messages", "Total incoming user messages received that day."),
     ("Total Agent Messages", "Total assistant messages sent that day."),
     ("New Users Came", "User records created that day."),
+    (
+        "Feature Usage",
+        "Attempts, successes, and failures for reward checks, QR scans, claim creation and status, support tickets, and Product Help RAG searches. Menu selections are excluded.",
+    ),
     (
         "Completed Flow Actions",
         "Successful Evolve API calls that represent a completed user action.",
@@ -223,6 +259,16 @@ def parse_args() -> argparse.Namespace:
         "--dry-run",
         action="store_true",
         help="Print report summary without sending email.",
+    )
+    parser.add_argument(
+        "--log-file",
+        default=os.getenv("KPI_REPORT_LOG_FILE"),
+        help="Optional file path for timestamped script logs.",
+    )
+    parser.add_argument(
+        "--excel-output",
+        default=os.getenv("KPI_REPORT_EXCEL_OUTPUT"),
+        help="Optional path to save the generated Excel report.",
     )
     return parser.parse_args()
 
@@ -429,6 +475,26 @@ async def load_report_data(database_url: str, window: DateWindow) -> dict[str, A
                 },
             )
 
+            mobile_message_rows = await fetch_all(
+                conn,
+                """
+                SELECT
+                    u.mobile_number,
+                    COUNT(*) AS total_messages
+                FROM messages m
+                JOIN users u ON u.id = m.user_id
+                WHERE m.sender = 'user'
+                  AND m.created_at >= :start_utc
+                  AND m.created_at < :end_utc
+                GROUP BY u.mobile_number
+                ORDER BY u.mobile_number
+                """,
+                {
+                    "start_utc": window.start_utc,
+                    "end_utc": window.end_utc,
+                },
+            )
+
             api_rows: list[dict[str, Any]] = []
             if await table_exists(conn, "external_api_daily_counts"):
                 api_columns = await table_columns(conn, "external_api_daily_counts")
@@ -470,13 +536,84 @@ async def load_report_data(database_url: str, window: DateWindow) -> dict[str, A
                     },
                 )
 
+            feature_usage_rows: list[dict[str, Any]] = []
+            mobile_feature_usage_rows: list[dict[str, Any]] = []
+            if await table_exists(conn, "chatbot_feature_usage_events"):
+                feature_usage_rows = await fetch_all(
+                    conn,
+                    """
+                    SELECT
+                        event_date AS day,
+                        event_key,
+                        event_name,
+                        flow_name,
+                        COUNT(DISTINCT user_id) AS unique_users,
+                        COUNT(*) AS usage_count,
+                        COUNT(*) FILTER (
+                            WHERE detection_method = :success_method
+                        ) AS success_count,
+                        COUNT(*) FILTER (
+                            WHERE detection_method = :failure_method
+                        ) AS failure_count,
+                        STRING_AGG(DISTINCT detection_method, ', ' ORDER BY detection_method) AS detection_methods
+                    FROM chatbot_feature_usage_events
+                    WHERE detection_method = ANY(:result_methods)
+                      AND event_key = ANY(:feature_keys)
+                      AND event_date >= :start_day
+                      AND event_date <= :end_day
+                    GROUP BY event_date, event_key, event_name, flow_name
+                    ORDER BY event_date, flow_name, event_name
+                    """,
+                    {
+                        "result_methods": list(FEATURE_RESULT_METHODS),
+                        "success_method": COMPLETION_DETECTION_METHOD,
+                        "failure_method": FAILURE_DETECTION_METHOD,
+                        "feature_keys": list(FEATURE_EVENTS),
+                        "start_day": window.start_day,
+                        "end_day": window.end_day,
+                    },
+                )
+                mobile_feature_usage_rows = await fetch_all(
+                    conn,
+                    """
+                    SELECT
+                        mobile_number,
+                        event_name,
+                        COUNT(*) AS usage_count,
+                        COUNT(*) FILTER (
+                            WHERE detection_method = :success_method
+                        ) AS success_count,
+                        COUNT(*) FILTER (
+                            WHERE detection_method = :failure_method
+                        ) AS failure_count
+                    FROM chatbot_feature_usage_events
+                    WHERE detection_method = ANY(:result_methods)
+                      AND event_key = ANY(:feature_keys)
+                      AND event_date >= :start_day
+                      AND event_date <= :end_day
+                    GROUP BY mobile_number, event_name
+                    ORDER BY mobile_number, event_name
+                    """,
+                    {
+                        "result_methods": list(FEATURE_RESULT_METHODS),
+                        "success_method": COMPLETION_DETECTION_METHOD,
+                        "failure_method": FAILURE_DETECTION_METHOD,
+                        "feature_keys": list(FEATURE_EVENTS),
+                        "start_day": window.start_day,
+                        "end_day": window.end_day,
+                    },
+                )
+
     finally:
         await engine.dispose()
 
     return {
         "daily_rows": daily_rows,
         "new_user_rows": new_user_rows,
+        "mobile_message_rows": mobile_message_rows,
         "api_rows": api_rows,
+        "feature_usage_rows": feature_usage_rows,
+        "mobile_feature_usage_rows": mobile_feature_usage_rows,
     }
 
 
@@ -621,10 +758,345 @@ def render_kpi_card(label: str, value: str) -> str:
     """
 
 
+def build_mobile_feature_usage_sheet(
+    report: dict[str, Any],
+) -> tuple[list[str], list[list[Any]]]:
+    mobile_records: dict[str, dict[str, dict[str, int]]] = {}
+    total_messages: dict[str, int] = {}
+    extra_features = set()
+
+    for row in report["mobile_message_rows"]:
+        mobile = str(row.get("mobile_number") or "").strip() or "(unknown)"
+        mobile_records.setdefault(mobile, {})
+        total_messages[mobile] = total_messages.get(mobile, 0) + int(
+            row.get("total_messages") or 0
+        )
+
+    for row in report["mobile_feature_usage_rows"]:
+        mobile = str(row.get("mobile_number") or "").strip() or "(unknown)"
+        event_name = str(row.get("event_name") or "").strip()
+        if not event_name:
+            continue
+        mobile_records.setdefault(mobile, {})
+        counts = mobile_records[mobile].setdefault(
+            event_name,
+            {"attempts": 0, "successes": 0, "failures": 0},
+        )
+        counts["attempts"] += int(row.get("usage_count") or 0)
+        counts["successes"] += int(row.get("success_count") or 0)
+        counts["failures"] += int(row.get("failure_count") or 0)
+        if event_name not in FEATURE_USAGE_COLUMNS:
+            extra_features.add(event_name)
+
+    feature_columns = FEATURE_USAGE_COLUMNS + sorted(extra_features)
+    feature_headers = [
+        f"{feature} - {metric}"
+        for feature in feature_columns
+        for metric in ("Attempts", "Successful", "Failed")
+    ]
+    headers = ["Mobile Number", *feature_headers, "Total Messages"]
+    rows = []
+    for mobile in sorted(mobile_records):
+        feature_counts = mobile_records[mobile]
+        rows.append([
+            mobile,
+            *[
+                feature_counts.get(feature, {}).get(metric, 0)
+                for feature in feature_columns
+                for metric in ("attempts", "successes", "failures")
+            ],
+            total_messages.get(mobile, 0),
+        ])
+
+    return headers, rows
+
+
+def build_report_summary_tables(
+    report: dict[str, Any],
+    window: DateWindow,
+) -> list[tuple[str, list[str], list[list[Any]]]]:
+    daily_by_day = index_by_day(report["daily_rows"])
+    new_users_by_day = index_by_day(report["new_user_rows"])
+    api_rows = report["api_rows"]
+    feature_usage_rows = report["feature_usage_rows"]
+    completion_rows = aggregate_flow_completion_rows(api_rows)
+    flow_summary_rows = aggregate_flow_summary_rows(api_rows)
+
+    totals = {
+        "unique_users": 0,
+        "user_messages": 0,
+        "assistant_messages": 0,
+        "new_users": 0,
+        "completed_flow_actions": 0,
+        "api_calls": 0,
+        "api_success": 0,
+        "api_failure": 0,
+    }
+    for day in day_range(window):
+        daily = daily_by_day.get(day, {})
+        new_users = new_users_by_day.get(day, {})
+        totals["unique_users"] += int(daily.get("unique_users") or 0)
+        totals["user_messages"] += int(daily.get("user_messages") or 0)
+        totals["assistant_messages"] += int(daily.get("assistant_messages") or 0)
+        totals["new_users"] += int(new_users.get("new_users") or 0)
+
+    for row in api_rows:
+        totals["api_calls"] += int(row.get("total_calls") or 0)
+        totals["api_success"] += int(row.get("success_calls") or 0)
+        totals["api_failure"] += int(row.get("failure_calls") or 0)
+
+    for row in completion_rows:
+        totals["completed_flow_actions"] += int(row.get("success_calls") or 0)
+
+    top_summary = [
+        ["Total Unique Users", int(totals["unique_users"])],
+        ["New Users Came", int(totals["new_users"])],
+        ["Total User Messages", int(totals["user_messages"])],
+        ["Total Agent Messages", int(totals["assistant_messages"])],
+        ["Completed Flow Actions", int(totals["completed_flow_actions"])],
+        ["Evolve API Hits", int(totals["api_calls"])],
+        ["Evolve API Failures", int(totals["api_failure"])],
+    ]
+
+    daily_summary = []
+    for day in day_range(window):
+        daily = daily_by_day.get(day, {})
+        new_users = new_users_by_day.get(day, {})
+        daily_summary.append([
+            day.isoformat(),
+            int(daily.get("unique_users") or 0),
+            int(daily.get("user_messages") or 0),
+            int(daily.get("assistant_messages") or 0),
+            int(new_users.get("new_users") or 0),
+        ])
+
+    feature_usage = []
+    for row in feature_usage_rows:
+        attempts = int(row.get("usage_count") or 0)
+        successes = int(row.get("success_count") or 0)
+        failures = int(row.get("failure_count") or 0)
+        feature_usage.append([
+            row["day"].isoformat(),
+            row.get("event_name") or "",
+            row.get("flow_name") or "",
+            int(row.get("unique_users") or 0),
+            attempts,
+            successes,
+            failures,
+            pct(successes, attempts),
+        ])
+
+    flow_summary = []
+    for row in flow_summary_rows:
+        total = int(row.get("total_calls") or 0)
+        success = int(row.get("success_calls") or 0)
+        flow_summary.append([
+            row.get("flow") or "",
+            int(row.get("completed_actions") or 0),
+            int(row.get("completion_attempts") or 0),
+            total,
+            success,
+            int(row.get("failure_calls") or 0),
+            pct(success, total),
+            row.get("apis_hit") or "-",
+            row.get("action_names") or "-",
+        ])
+
+    completion = []
+    for row in completion_rows:
+        completion.append([
+            row["day"].isoformat(),
+            row.get("kpi_name") or "",
+            row.get("flow") or "",
+            row.get("api_name") or "",
+            int(row.get("success_calls") or 0),
+            int(row.get("total_calls") or 0),
+            int(row.get("failure_calls") or 0),
+        ])
+
+    api_health = []
+    for row in api_rows:
+        total = int(row.get("total_calls") or 0)
+        api_health.append([
+            row["day"].isoformat(),
+            row.get("api_name") or "",
+            row.get("method") or "",
+            row.get("endpoint") or "",
+            total,
+            int(row.get("success_calls") or 0),
+            int(row.get("failure_calls") or 0),
+            round(average_ms(row.get("total_duration_ms"), total), 2),
+            round(float(row.get("max_duration_ms") or 0.0), 2),
+            format_status_codes(row),
+            format_error_messages(row),
+        ])
+
+    return [
+        ("Top KPI Summary", ["KPI", "Value"], top_summary),
+        ("KPI Names", ["KPI", "What It Indicates"], [list(row) for row in KPI_DEFINITIONS]),
+        (
+            "Daily KPI Summary",
+            [
+                "Day",
+                "Total Unique Users",
+                "Total User Messages",
+                "Total Agent Messages",
+                "New Users Came",
+            ],
+            daily_summary,
+        ),
+        (
+            "Feature Usage",
+            [
+                "Day",
+                "Feature",
+                "Flow",
+                "Unique Users",
+                "Attempts",
+                "Successful",
+                "Failed",
+                "Success %",
+            ],
+            feature_usage,
+        ),
+        (
+            "Flow Details Summary",
+            [
+                "Flow",
+                "Completed Flow Actions",
+                "Completion Attempts",
+                "Evolve API Hits",
+                "Successful Hits",
+                "Evolve API Failures",
+                "Success %",
+                "APIs Hit",
+                "Tracked Action KPIs",
+            ],
+            flow_summary,
+        ),
+        (
+            "Flow Completion KPIs",
+            ["Day", "KPI", "Flow", "Completion API", "Completed", "Attempts", "Failed"],
+            completion,
+        ),
+        (
+            "Evolve API Health",
+            [
+                "Day",
+                "API",
+                "Method",
+                "Endpoint",
+                "Total Hits",
+                "Successful Hits",
+                "Failed Hits",
+                "Average Time MS",
+                "Max Time MS",
+                "Status Codes",
+                "Errors",
+            ],
+            api_health,
+        ),
+    ]
+
+
+def _set_column_widths(ws) -> None:
+    for column_cells in ws.columns:
+        max_length = 0
+        column_letter = column_cells[0].column_letter
+        for cell in column_cells:
+            value = "" if cell.value is None else str(cell.value)
+            max_length = max(max_length, len(value))
+        ws.column_dimensions[column_letter].width = min(max(max_length + 2, 12), 45)
+
+
+def _append_excel_table(ws, title: str, headers: list[str], rows: list[list[Any]], start_row: int) -> int:
+    from openpyxl.styles import Alignment, Font, PatternFill
+
+    title_cell = ws.cell(row=start_row, column=1, value=title)
+    title_cell.font = Font(bold=True, size=13, color="111827")
+    start_row += 1
+
+    header_fill = PatternFill("solid", fgColor="E5E7EB")
+    for col_idx, header in enumerate(headers, start=1):
+        cell = ws.cell(row=start_row, column=col_idx, value=header)
+        cell.font = Font(bold=True, color="111827")
+        cell.fill = header_fill
+        cell.alignment = Alignment(wrap_text=True, vertical="top")
+
+    if rows:
+        for row_idx, row in enumerate(rows, start=start_row + 1):
+            for col_idx, value in enumerate(row, start=1):
+                ws.cell(row=row_idx, column=col_idx, value=value).alignment = Alignment(
+                    wrap_text=True,
+                    vertical="top",
+                )
+        return start_row + len(rows) + 3
+
+    ws.cell(row=start_row + 1, column=1, value="No records for this period.")
+    return start_row + 4
+
+
+def build_excel_report(report: dict[str, Any], window: DateWindow) -> tuple[str, bytes]:
+    try:
+        from openpyxl import Workbook
+        from openpyxl.styles import Alignment, Font, PatternFill
+    except ImportError as exc:
+        raise RuntimeError(
+            "openpyxl is required to generate Excel reports. "
+            "Install it with: pip install openpyxl"
+        ) from exc
+
+    period_label = (
+        window.start_day.isoformat()
+        if window.start_day == window.end_day
+        else f"{window.start_day.isoformat()}_to_{window.end_day.isoformat()}"
+    )
+    workbook = Workbook()
+
+    mobile_headers, mobile_rows = build_mobile_feature_usage_sheet(report)
+    ws_mobile = workbook.active
+    ws_mobile.title = "Mobile Feature Usage"
+    ws_mobile.cell(row=1, column=1, value="Mobile Number Wise Feature Usage Counts")
+    ws_mobile.cell(row=2, column=1, value=f"Period: {period_label}")
+    ws_mobile.cell(row=3, column=1, value=f"Timezone: {window.timezone_name}")
+    ws_mobile["A1"].font = Font(bold=True, size=14)
+    ws_mobile["A2"].font = Font(color="4B5563")
+    ws_mobile["A3"].font = Font(color="4B5563")
+    _append_excel_table(ws_mobile, "Mobile Feature Usage", mobile_headers, mobile_rows, 5)
+    ws_mobile.freeze_panes = "B7"
+    _set_column_widths(ws_mobile)
+
+    ws_summary = workbook.create_sheet("Report Summary")
+    ws_summary.cell(row=1, column=1, value="Sintex Agent KPI Report")
+    ws_summary.cell(row=2, column=1, value=f"Period: {period_label}")
+    ws_summary.cell(row=3, column=1, value=f"Timezone: {window.timezone_name}")
+    ws_summary["A1"].font = Font(bold=True, size=14)
+    ws_summary["A2"].font = Font(color="4B5563")
+    ws_summary["A3"].font = Font(color="4B5563")
+
+    next_row = 5
+    for title, headers, rows in build_report_summary_tables(report, window):
+        next_row = _append_excel_table(ws_summary, title, headers, rows, next_row)
+    _set_column_widths(ws_summary)
+
+    for ws in workbook.worksheets:
+        for row in ws.iter_rows():
+            for cell in row:
+                cell.alignment = Alignment(wrap_text=True, vertical="top")
+        for cell in ws[1]:
+            cell.fill = PatternFill("solid", fgColor="F3F4F6")
+
+    output = BytesIO()
+    workbook.save(output)
+    filename = f"sintex_agent_kpi_report_{period_label}.xlsx"
+    return filename, output.getvalue()
+
+
 def build_report_html(report: dict[str, Any], window: DateWindow) -> str:
     daily_by_day = index_by_day(report["daily_rows"])
     new_users_by_day = index_by_day(report["new_user_rows"])
     api_rows = report["api_rows"]
+    feature_usage_rows = report["feature_usage_rows"]
     completion_rows = aggregate_flow_completion_rows(api_rows)
     flow_summary_rows = aggregate_flow_summary_rows(api_rows)
 
@@ -669,6 +1141,22 @@ def build_report_html(report: dict[str, Any], window: DateWindow) -> str:
             fmt_int(daily.get("user_messages")),
             fmt_int(daily.get("assistant_messages")),
             fmt_int(new_users.get("new_users")),
+        ])
+
+    feature_usage_table_rows = []
+    for row in feature_usage_rows:
+        attempts = int(row.get("usage_count") or 0)
+        successes = int(row.get("success_count") or 0)
+        failures = int(row.get("failure_count") or 0)
+        feature_usage_table_rows.append([
+            row["day"].isoformat(),
+            row.get("event_name") or "",
+            row.get("flow_name") or "",
+            fmt_int(row.get("unique_users")),
+            fmt_int(attempts),
+            fmt_int(successes),
+            fmt_int(failures),
+            pct(successes, attempts),
         ])
 
     flow_summary_table_rows = []
@@ -788,6 +1276,23 @@ def build_report_html(report: dict[str, Any], window: DateWindow) -> str:
     </section>
 
     <section class="section" style="background:#ffffff;border:1px solid #dfe5ee;border-radius:8px;padding:18px;margin-top:14px;">
+      <h2 style="font-size:17px;line-height:1.3;margin:0 0 10px;">Feature Usage</h2>
+      {render_table(
+        [
+            ("Day", "left"),
+            ("Feature", "left"),
+            ("Flow", "left"),
+            ("Unique Users", "right"),
+            ("Attempts", "right"),
+            ("Successful", "right"),
+            ("Failed", "right"),
+            ("Success %", "right"),
+        ],
+        feature_usage_table_rows,
+      )}
+    </section>
+
+    <section class="section" style="background:#ffffff;border:1px solid #dfe5ee;border-radius:8px;padding:18px;margin-top:14px;">
       <h2 style="font-size:17px;line-height:1.3;margin:0 0 10px;">Flow Details Summary</h2>
       {render_table(
         [
@@ -853,6 +1358,7 @@ def build_report_text(report: dict[str, Any], window: DateWindow) -> str:
     daily_by_day = index_by_day(report["daily_rows"])
     new_users_by_day = index_by_day(report["new_user_rows"])
     api_rows = report["api_rows"]
+    feature_usage_rows = report["feature_usage_rows"]
     completion_rows = aggregate_flow_completion_rows(api_rows)
     flow_summary_rows = aggregate_flow_summary_rows(api_rows)
     totals = {
@@ -909,6 +1415,24 @@ def build_report_text(report: dict[str, Any], window: DateWindow) -> str:
             f"total_user_messages={fmt_int(daily.get('user_messages'))}, "
             f"total_agent_messages={fmt_int(daily.get('assistant_messages'))}, "
             f"new_users_came={fmt_int(new_users.get('new_users'))}"
+        )
+
+    lines.extend([
+        "",
+        "Feature Usage:",
+    ])
+    if not feature_usage_rows:
+        lines.append("- No feature attempts for this period.")
+    for row in feature_usage_rows:
+        attempts = int(row.get("usage_count") or 0)
+        successes = int(row.get("success_count") or 0)
+        lines.append(
+            f"- {row['day']} {row['event_name']} ({row['flow_name']}): "
+            f"unique_users={fmt_int(row.get('unique_users'))}, "
+            f"attempts={fmt_int(attempts)}, "
+            f"successful={fmt_int(successes)}, "
+            f"failed={fmt_int(row.get('failure_count'))}, "
+            f"success_rate={pct(successes, attempts)}"
         )
 
     lines.extend([
@@ -970,6 +1494,8 @@ def send_email(
     subject: str,
     html_body: str,
     text_body: str,
+    attachment_filename: str | None = None,
+    attachment_bytes: bytes | None = None,
 ) -> None:
     smtp_host = os.getenv("SMTP_HOST", "smtp.office365.com")
     smtp_port = int(os.getenv("SMTP_PORT", "587"))
@@ -992,8 +1518,22 @@ def send_email(
     message["To"] = ", ".join(recipients)
     message.set_content(text_body)
     message.add_alternative(html_body, subtype="html")
+    if attachment_filename and attachment_bytes:
+        message.add_attachment(
+            attachment_bytes,
+            maintype="application",
+            subtype="vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            filename=attachment_filename,
+        )
 
     try:
+        logger.info(
+            "Connecting to SMTP host=%s port=%s sender=%s recipients=%s",
+            smtp_host,
+            smtp_port,
+            sender,
+            len(recipients),
+        )
         with smtplib.SMTP(smtp_host, smtp_port) as smtp:
             smtp.starttls()
             smtp.login(smtp_user, smtp_pass)
@@ -1020,7 +1560,15 @@ def send_email(
 
 async def async_main() -> None:
     args = parse_args()
+    setup_logging(args.log_file)
     window = build_window(args)
+    logger.info(
+        "KPI report started | dry_run=%s | start_day=%s | end_day=%s | timezone=%s",
+        args.dry_run,
+        window.start_day,
+        window.end_day,
+        window.timezone_name,
+    )
 
     database_url = os.getenv("DATABASE_URL")
     if not database_url:
@@ -1031,10 +1579,35 @@ async def async_main() -> None:
         or split_csv(os.getenv("KPI_REPORT_TO"))
         or split_csv(os.getenv("KPI_EMAIL_TO"))
     )
+    logger.info("Recipients resolved | count=%s", len(recipients))
 
+    logger.info("Loading report data from database")
     report = await load_report_data(database_url, window)
+    logger.info(
+        "Report data loaded | daily_rows=%s | new_user_rows=%s | "
+        "mobile_message_rows=%s | api_rows=%s | feature_usage_rows=%s | "
+        "mobile_feature_usage_rows=%s",
+        len(report["daily_rows"]),
+        len(report["new_user_rows"]),
+        len(report["mobile_message_rows"]),
+        len(report["api_rows"]),
+        len(report["feature_usage_rows"]),
+        len(report["mobile_feature_usage_rows"]),
+    )
     html_body = build_report_html(report, window)
     text_body = build_report_text(report, window)
+    excel_filename, excel_bytes = build_excel_report(report, window)
+    logger.info(
+        "Excel report generated | filename=%s | size_bytes=%s",
+        excel_filename,
+        len(excel_bytes),
+    )
+
+    if args.excel_output:
+        output_path = Path(args.excel_output).expanduser()
+        output_path.parent.mkdir(parents=True, exist_ok=True)
+        output_path.write_bytes(excel_bytes)
+        logger.info("Excel report saved | path=%s", output_path)
 
     subject_date = (
         window.start_day.isoformat()
@@ -1042,27 +1615,35 @@ async def async_main() -> None:
         else f"{window.start_day.isoformat()} to {window.end_day.isoformat()}"
     )
     subject = f"{args.subject_prefix} - {subject_date}"
+    logger.info("Report subject prepared | subject=%s", subject)
 
     if args.dry_run:
         print(text_body)
         print("")
         print(f"Recipients: {', '.join(recipients) if recipients else '(none)'}")
         print(f"Subject: {subject}")
+        print(f"Excel attachment: {excel_filename} ({len(excel_bytes)} bytes)")
+        logger.info("KPI report dry run completed")
         return
 
+    logger.info("Sending KPI report email")
     send_email(
         recipients=recipients,
         subject=subject,
         html_body=html_body,
         text_body=text_body,
+        attachment_filename=excel_filename,
+        attachment_bytes=excel_bytes,
     )
+    logger.info("KPI report sent successfully")
     print(f"KPI report sent to {', '.join(recipients)}")
 
 
 def main() -> None:
     try:
         asyncio.run(async_main())
-    except RuntimeError as exc:
+    except Exception as exc:
+        logger.exception("KPI report failed")
         print(f"Error: {exc}", file=sys.stderr)
         raise SystemExit(1) from None
 

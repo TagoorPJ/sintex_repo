@@ -173,3 +173,38 @@ class ExternalApiDailyCount(Base):
         onupdate=_utcnow,
         nullable=False,
     )
+
+
+class ChatbotFeatureUsageEvent(Base):
+    __tablename__ = "chatbot_feature_usage_events"
+    __table_args__ = (
+        UniqueConstraint(
+            "message_id",
+            "event_key",
+            name="uq_chatbot_feature_usage_message_event",
+        ),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    event_date: Mapped[date] = mapped_column(Date, nullable=False, index=True)
+    event_key: Mapped[str] = mapped_column(String(100), nullable=False, index=True)
+    event_name: Mapped[str] = mapped_column(String(200), nullable=False)
+    flow_name: Mapped[str] = mapped_column(String(100), nullable=False, index=True)
+    option_number: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    user_id: Mapped[int] = mapped_column(
+        Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    conversation_id: Mapped[int] = mapped_column(
+        Integer, ForeignKey("conversations.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    message_id: Mapped[int] = mapped_column(
+        Integer, ForeignKey("messages.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    mobile_number: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    raw_user_message: Mapped[str] = mapped_column(Text, nullable=False)
+    detection_method: Mapped[str] = mapped_column(String(50), nullable=False)
+    confidence: Mapped[float | None] = mapped_column(Float, nullable=True)
+    classifier_reason: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=_utcnow, nullable=False
+    )
