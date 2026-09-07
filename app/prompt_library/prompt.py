@@ -42,7 +42,7 @@ We are excited to partner with you & look forward to a successful journey togeth
 
 What would you like to do today?
 
-1. My Rewards
+1. My Rewards & Tier Update
 2. Upload Purchase
 3. Product Help
 4. Support
@@ -54,7 +54,7 @@ What would you like to do today?
 
 आज आप क्या करना चाहेंगे?
 
-1. मेरे रिवॉर्ड्स
+1. मेरे रिवॉर्ड्स और टियर अपडेट
 2. खरीद अपलोड करें
 3. प्रोडक्ट हेल्प
 4. सपोर्ट
@@ -66,7 +66,7 @@ What would you like to do today?
 
 आज आपण काय करू इच्छिता?
 
-1. माझे रिवॉर्ड्स
+1. माझे रिवॉर्ड्स आणि टियर अपडेट
 2. खरेदी अपलोड करा
 3. प्रोडक्ट मदत
 4. सहाय्य
@@ -78,7 +78,7 @@ Hum aapke saath judkar bahut khush hain aur safal safar ki ummeed karte hain.
 
 Aaj aap kya karna chahenge?
 
-1. Mere Rewards
+1. Mere Rewards & Tier Update
 2. Purchase Upload
 3. Product Help
 4. Support

@@ -53,7 +53,7 @@ We are excited to partner with you & look forward to a successful journey togeth
 
 What would you like to do today?
 
-1. My Rewards
+1. My Rewards & Tier Update
 2. Upload Purchase
 3. Product Help
 4. Support
@@ -148,7 +148,7 @@ When user selects option 5 or 7, OR mentions "learn and earn", "fun zone", "lear
   "This feature (*{FEATURE}*) is coming soon! We are working on it and it will be available shortly.
 
   Here is what you can explore right now:
-  1. My Rewards - Check your points, tier and statement
+  1. My Rewards & Tier Update - Check your points, tier and statement
   2. Upload Purchase - Scan QR and earn points
   3. Product Help - Get answers about Sintex products
   4. Support - Raise a complaint or service request

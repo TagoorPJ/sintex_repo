@@ -80,7 +80,7 @@ Jab user option 5 ya 7 choose kare, ya "seekho aur kamao", "maza zone", "learn",
   "Yeh feature (*{FEATURE}*) jald aa raha hai! Hum iss par kaam kar rahe hain aur yeh bahut jald available hoga.
 
   Abhi aap yeh sab explore kar sakte hain:
-  1. Mere Rewards - Apne points, tier aur statement dekho
+  1. Mere Rewards & Tier Update - Apne points, tier aur statement dekho
   2. Purchase Upload - QR scan karo aur points kamao
   3. Product Help - Sintex products ke baare mein jaankari lo
   4. Support - Shikayat ya seva anurodh darj karo
@@ -119,7 +119,7 @@ Hum aapke saath judkar bahut khush hain aur safal safar ki umeed karte hain.
 
 Aaj aap kya karna chahenge?
 
-1. Mere Rewards
+1. Mere Rewards & Tier Update
 2. Purchase Upload
 3. Product Help
 4. Support
