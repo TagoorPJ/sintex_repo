@@ -109,20 +109,6 @@ RESPONSIVE_EMAIL_CSS = """
 </style>
 """
 
-FLOW_API_MAP = {
-    "evolve.register": "Registration",
-    "evolve.validate_member": "Registration",
-    "evolve.balance_inquiry": "My Rewards",
-    "evolve.points_history": "My Rewards",
-    "evolve.tier_status": "My Rewards",
-    "evolve.reward_statement": "My Rewards",
-    "evolve.find_dealer": "Upload Purchase",
-    "evolve.capture_qr": "Upload Purchase",
-    "evolve.claim_create": "Upload Purchase",
-    "evolve.claim_status": "Upload Purchase",
-    "evolve.support_ticket": "Support",
-}
-
 FLOW_COMPLETION_KPIS = {
     "evolve.register": {
         "name": "Completed Registrations",
@@ -180,34 +166,11 @@ FLOW_COMPLETION_KPIS = {
 if str(BASE_DIR) not in sys.path:
     sys.path.insert(0, str(BASE_DIR))
 from app.analytics.feature_events import (
-    COMPLETION_DETECTION_METHOD,
-    FAILURE_DETECTION_METHOD,
     FEATURE_EVENTS,
     FEATURE_RESULT_METHODS,
 )
 
 FEATURE_USAGE_COLUMNS = [name for name, _ in FEATURE_EVENTS.values()]
-
-
-KPI_DEFINITIONS = [
-    ("Total Unique Users", "Distinct users who sent at least one message that day."),
-    ("Total User Messages", "Total incoming user messages received that day."),
-    ("Total Agent Messages", "Total assistant messages sent that day."),
-    ("New Users Came", "User records created that day."),
-    (
-        "Feature Usage",
-        "Attempts, successes, and failures for reward checks, QR scans, claim creation and status, support tickets, and Product Help RAG searches. Menu selections are excluded.",
-    ),
-    (
-        "Completed Flow Actions",
-        "Successful Evolve API calls that represent a completed user action.",
-    ),
-    ("Evolve API Hits", "Total tracked Evolve API requests made by this service."),
-    (
-        "Evolve API Failures",
-        "Tracked Evolve requests that failed by exception, HTTP status, or response body.",
-    ),
-]
 
 
 @dataclass
@@ -225,7 +188,19 @@ def parse_args() -> argparse.Namespace:
     )
     parser.add_argument(
         "--date",
-        help="Report end date in YYYY-MM-DD. Defaults to today in --timezone.",
+        help="Generate the report for one date in YYYY-MM-DD format.",
+    )
+    parser.add_argument(
+        "--from-date",
+        "--start-date",
+        dest="from_date",
+        help="First date of an inclusive report range in YYYY-MM-DD format.",
+    )
+    parser.add_argument(
+        "--to-date",
+        "--end-date",
+        dest="to_date",
+        help="Last date of an inclusive report range in YYYY-MM-DD format.",
     )
     parser.add_argument(
         "--yesterday",
@@ -235,8 +210,8 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--days",
         type=int,
-        default=1,
-        help="Number of days to include ending at --date. Default: 1.",
+        default=None,
+        help="Rolling number of days ending at --date or today. Default: 1.",
     )
     parser.add_argument(
         "--timezone",
@@ -292,19 +267,37 @@ def resolve_timezone(timezone_name: str):
 
 
 def build_window(args: argparse.Namespace) -> DateWindow:
-    if args.days < 1:
+    days = getattr(args, "days", None)
+    from_date = getattr(args, "from_date", None)
+    to_date = getattr(args, "to_date", None)
+    range_selected = bool(from_date or to_date)
+
+    if days is not None and days < 1:
         raise ValueError("--days must be at least 1")
+    if bool(from_date) != bool(to_date):
+        raise ValueError("Use --from-date and --to-date together")
+    if range_selected and (args.date or args.yesterday or days is not None):
+        raise ValueError(
+            "A date range cannot be combined with --date, --yesterday, or --days"
+        )
     if args.date and args.yesterday:
         raise ValueError("Use either --date or --yesterday, not both")
 
     tz = resolve_timezone(args.timezone)
-    if args.date:
+    if range_selected:
+        start_day = datetime.strptime(from_date, "%Y-%m-%d").date()
+        end_day = datetime.strptime(to_date, "%Y-%m-%d").date()
+        if start_day > end_day:
+            raise ValueError("--from-date cannot be later than --to-date")
+    elif args.date:
         end_day = datetime.strptime(args.date, "%Y-%m-%d").date()
+        start_day = end_day - timedelta(days=(days or 1) - 1)
     elif args.yesterday:
         end_day = datetime.now(tz).date() - timedelta(days=1)
+        start_day = end_day - timedelta(days=(days or 1) - 1)
     else:
         end_day = datetime.now(tz).date()
-    start_day = end_day - timedelta(days=args.days - 1)
+        start_day = end_day - timedelta(days=(days or 1) - 1)
 
     local_start = datetime.combine(start_day, time.min, tzinfo=tz)
     local_end = datetime.combine(end_day + timedelta(days=1), time.min, tzinfo=tz)
@@ -315,6 +308,21 @@ def build_window(args: argparse.Namespace) -> DateWindow:
         timezone_name=args.timezone,
         start_utc=local_start.astimezone(timezone.utc),
         end_utc=local_end.astimezone(timezone.utc),
+    )
+
+
+def build_ytd_window(window: DateWindow) -> DateWindow:
+    """Calendar year to date, ending on the selected report's final day."""
+    start_day = date(window.end_day.year, 1, 1)
+    local_start = datetime.combine(
+        start_day, time.min, tzinfo=resolve_timezone(window.timezone_name)
+    )
+    return DateWindow(
+        start_day=start_day,
+        end_day=window.end_day,
+        timezone_name=window.timezone_name,
+        start_utc=local_start.astimezone(timezone.utc),
+        end_utc=window.end_utc,
     )
 
 
@@ -383,50 +391,9 @@ def aggregate_flow_completion_rows(api_rows: list[dict[str, Any]]) -> list[dict[
     )
 
 
-def aggregate_flow_summary_rows(api_rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
-    records: dict[str, dict[str, Any]] = {}
-    for row in api_rows:
-        api_name = str(row.get("api_name") or "")
-        flow = FLOW_API_MAP.get(api_name, "Other Evolve API")
-        record = records.setdefault(
-            flow,
-            {
-                "flow": flow,
-                "completed_actions": 0,
-                "completion_attempts": 0,
-                "total_calls": 0,
-                "success_calls": 0,
-                "failure_calls": 0,
-                "action_names": set(),
-                "apis_hit": set(),
-            },
-        )
-        record["total_calls"] += _api_int(row, "total_calls")
-        record["success_calls"] += _api_int(row, "success_calls")
-        record["failure_calls"] += _api_int(row, "failure_calls")
-        endpoint = str(row.get("endpoint") or "").strip()
-        api_label = api_name
-        if endpoint:
-            api_label = f"{api_name} ({endpoint})"
-        record["apis_hit"].add(api_label)
-
-        definition = FLOW_COMPLETION_KPIS.get(api_name)
-        if definition:
-            record["completed_actions"] += _api_int(row, "success_calls")
-            record["completion_attempts"] += _api_int(row, "total_calls")
-            record["action_names"].add(definition["name"])
-
-    rows = []
-    for record in records.values():
-        rows.append({
-            **record,
-            "action_names": ", ".join(sorted(record["action_names"])) or "-",
-            "apis_hit": ", ".join(sorted(record["apis_hit"])) or "-",
-        })
-    return sorted(rows, key=lambda item: item["flow"])
-
-
-async def load_report_data(database_url: str, window: DateWindow) -> dict[str, Any]:
+async def load_report_data(
+    database_url: str, window: DateWindow, *, include_feature_usage: bool = True
+) -> dict[str, Any]:
     engine = create_async_engine(database_url, pool_pre_ping=True)
     try:
         async with engine.connect() as conn:
@@ -538,7 +505,7 @@ async def load_report_data(database_url: str, window: DateWindow) -> dict[str, A
 
             feature_usage_rows: list[dict[str, Any]] = []
             mobile_feature_usage_rows: list[dict[str, Any]] = []
-            if await table_exists(conn, "chatbot_feature_usage_events"):
+            if include_feature_usage and await table_exists(conn, "chatbot_feature_usage_events"):
                 feature_usage_rows = await fetch_all(
                     conn,
                     """
@@ -549,12 +516,6 @@ async def load_report_data(database_url: str, window: DateWindow) -> dict[str, A
                         flow_name,
                         COUNT(DISTINCT user_id) AS unique_users,
                         COUNT(*) AS usage_count,
-                        COUNT(*) FILTER (
-                            WHERE detection_method = :success_method
-                        ) AS success_count,
-                        COUNT(*) FILTER (
-                            WHERE detection_method = :failure_method
-                        ) AS failure_count,
                         STRING_AGG(DISTINCT detection_method, ', ' ORDER BY detection_method) AS detection_methods
                     FROM chatbot_feature_usage_events
                     WHERE detection_method = ANY(:result_methods)
@@ -566,8 +527,6 @@ async def load_report_data(database_url: str, window: DateWindow) -> dict[str, A
                     """,
                     {
                         "result_methods": list(FEATURE_RESULT_METHODS),
-                        "success_method": COMPLETION_DETECTION_METHOD,
-                        "failure_method": FAILURE_DETECTION_METHOD,
                         "feature_keys": list(FEATURE_EVENTS),
                         "start_day": window.start_day,
                         "end_day": window.end_day,
@@ -579,13 +538,7 @@ async def load_report_data(database_url: str, window: DateWindow) -> dict[str, A
                     SELECT
                         mobile_number,
                         event_name,
-                        COUNT(*) AS usage_count,
-                        COUNT(*) FILTER (
-                            WHERE detection_method = :success_method
-                        ) AS success_count,
-                        COUNT(*) FILTER (
-                            WHERE detection_method = :failure_method
-                        ) AS failure_count
+                        COUNT(*) AS usage_count
                     FROM chatbot_feature_usage_events
                     WHERE detection_method = ANY(:result_methods)
                       AND event_key = ANY(:feature_keys)
@@ -596,8 +549,6 @@ async def load_report_data(database_url: str, window: DateWindow) -> dict[str, A
                     """,
                     {
                         "result_methods": list(FEATURE_RESULT_METHODS),
-                        "success_method": COMPLETION_DETECTION_METHOD,
-                        "failure_method": FAILURE_DETECTION_METHOD,
                         "feature_keys": list(FEATURE_EVENTS),
                         "start_day": window.start_day,
                         "end_day": window.end_day,
@@ -615,6 +566,164 @@ async def load_report_data(database_url: str, window: DateWindow) -> dict[str, A
         "feature_usage_rows": feature_usage_rows,
         "mobile_feature_usage_rows": mobile_feature_usage_rows,
     }
+
+
+async def load_ytd_report_data(database_url: str, window: DateWindow) -> dict[str, Any]:
+    """Historical activity only: no API counters, feature events or mutable state."""
+    params = {
+        "tz": window.timezone_name,
+        "start_utc": window.start_utc,
+        "end_utc": window.end_utc,
+    }
+    engine = create_async_engine(database_url, pool_pre_ping=True)
+    try:
+        async with engine.connect() as conn:
+            # The conversation owns the user relationship, including messages
+            # saved before messages.user_id was introduced/backfilled.
+            activity_rows = await fetch_all(conn, """
+                WITH activity AS (
+                    SELECT c.user_id, m.sender,
+                           (m.created_at AT TIME ZONE :tz)::date AS day,
+                           DATE_TRUNC('month', m.created_at AT TIME ZONE :tz)::date AS month
+                    FROM messages m
+                    JOIN conversations c ON c.id = m.conversation_id
+                    WHERE m.created_at >= :start_utc AND m.created_at < :end_utc
+                )
+                SELECT month,
+                       COUNT(DISTINCT user_id) FILTER (WHERE sender = 'user') AS unique_users,
+                       COUNT(*) FILTER (WHERE sender = 'user') AS user_messages,
+                       COUNT(*) FILTER (WHERE sender = 'assistant') AS assistant_messages,
+                       COUNT(*) AS total_messages,
+                       COUNT(DISTINCT day) FILTER (WHERE sender = 'user') AS active_days
+                FROM activity
+                GROUP BY GROUPING SETS ((), (month))
+                ORDER BY month NULLS FIRST
+            """, params)
+            new_user_rows = await fetch_all(conn, """
+                SELECT DATE_TRUNC('month', created_at AT TIME ZONE :tz)::date AS month,
+                       COUNT(*) AS new_users
+                FROM users
+                WHERE created_at >= :start_utc AND created_at < :end_utc
+                GROUP BY GROUPING SETS ((), (month))
+                ORDER BY month NULLS FIRST
+            """, params)
+            engagement_rows = await fetch_all(conn, """
+                WITH user_activity AS (
+                    SELECT c.user_id,
+                           COUNT(*) AS user_messages,
+                           COUNT(DISTINCT (m.created_at AT TIME ZONE :tz)::date) AS active_days
+                    FROM messages m
+                    JOIN conversations c ON c.id = m.conversation_id
+                    WHERE m.sender = 'user'
+                      AND m.created_at >= :start_utc AND m.created_at < :end_utc
+                    GROUP BY c.user_id
+                )
+                SELECT COUNT(*) FILTER (WHERE u.created_at < :start_utc) AS existing_active_users,
+                       COUNT(*) FILTER (WHERE a.active_days >= 2) AS repeat_day_users,
+                       COUNT(*) FILTER (WHERE a.user_messages = 1) AS single_message_users,
+                       COALESCE(SUM(a.active_days), 0) AS user_days
+                FROM user_activity a
+                JOIN users u ON u.id = a.user_id
+            """, params)
+            mobile_user_rows = await fetch_all(conn, """
+                SELECT u.mobile_number,
+                       (u.created_at AT TIME ZONE :tz)::date AS user_created_day,
+                       MIN((m.created_at AT TIME ZONE :tz)::date)
+                           FILTER (WHERE m.sender = 'user') AS first_user_message_day,
+                       MAX((m.created_at AT TIME ZONE :tz)::date)
+                           FILTER (WHERE m.sender = 'user') AS last_user_message_day,
+                       COUNT(*) FILTER (WHERE m.sender = 'user') AS user_messages,
+                       COUNT(*) FILTER (WHERE m.sender = 'assistant') AS assistant_messages,
+                       COUNT(*) AS total_messages,
+                       COUNT(DISTINCT (m.created_at AT TIME ZONE :tz)::date)
+                           FILTER (WHERE m.sender = 'user') AS active_days,
+                       COUNT(DISTINCT DATE_TRUNC('month', m.created_at AT TIME ZONE :tz))
+                           FILTER (WHERE m.sender = 'user') AS active_months
+                FROM messages m
+                JOIN conversations c ON c.id = m.conversation_id
+                JOIN users u ON u.id = c.user_id
+                WHERE m.created_at >= :start_utc AND m.created_at < :end_utc
+                GROUP BY u.id, u.mobile_number, u.created_at
+                HAVING COUNT(*) FILTER (WHERE m.sender = 'user') > 0
+                ORDER BY u.mobile_number
+            """, params)
+    finally:
+        await engine.dispose()
+    return {
+        "activity_rows": activity_rows,
+        "new_user_rows": new_user_rows,
+        "engagement": engagement_rows[0] if engagement_rows else {},
+        "mobile_user_rows": mobile_user_rows,
+    }
+
+
+def build_ytd_summary_tables(
+    report: dict[str, Any], window: DateWindow
+) -> list[tuple[str, list[str], list[list[Any]]]]:
+    activity = {row["month"]: row for row in report["activity_rows"]}
+    users = {row["month"]: row for row in report["new_user_rows"]}
+    total = activity.get(None, {})
+    engagement = report["engagement"]
+
+    def count(row, key):
+        return int(row.get(key) or 0)
+
+    def ratio(numerator, denominator):
+        return round(numerator / denominator, 2) if denominator else "N/A"
+
+    unique_users = count(total, "unique_users")
+    user_messages = count(total, "user_messages")
+    new_users = count(users.get(None, {}), "new_users")
+    calendar_days = (window.end_day - window.start_day).days + 1
+    summary = [
+        ["Total Unique Users", unique_users, "Distinct users who sent a user message during YTD; counted once across the period."],
+        ["New Users Came", new_users, "User records created during YTD; does not imply Evolve registration."],
+        ["Existing Users Who Messaged", count(engagement, "existing_active_users"), "Users created before January 1 who sent a user message during YTD."],
+        ["Users Active on Multiple Days", count(engagement, "repeat_day_users"), "Users who sent messages on at least two distinct local dates during YTD."],
+        ["Single-Message Users", count(engagement, "single_message_users"), "Users with exactly one user message across YTD."],
+        ["Total User Messages", user_messages, "Stored messages with sender=user during YTD."],
+        ["Total Agent Messages", count(total, "assistant_messages"), "Stored messages with sender=assistant during YTD."],
+        ["Total Messages", count(total, "total_messages"), "All stored message senders during YTD."],
+        ["Days with User Activity", count(total, "active_days"), "Distinct local dates with at least one user message."],
+        ["Average Daily Active Users", ratio(count(engagement, "user_days"), calendar_days), "Sum of daily distinct messaging users / all calendar days in the selected YTD period."],
+        ["User Messages per Active User", ratio(user_messages, unique_users), "YTD user messages / YTD distinct messaging users."],
+    ]
+    monthly = []
+    month = window.start_day.replace(day=1)
+    while month <= window.end_day:
+        row = activity.get(month, {})
+        monthly.append([
+            month, count(row, "unique_users"),
+            count(users.get(month, {}), "new_users"),
+            count(row, "user_messages"), count(row, "assistant_messages"),
+            count(row, "total_messages"), count(row, "active_days"),
+        ])
+        month = (month.replace(day=28) + timedelta(days=4)).replace(day=1)
+    mobile_analytics = []
+    for row in report["mobile_user_rows"]:
+        last_day = row.get("last_user_message_day")
+        mobile_analytics.append([
+            str(row["mobile_number"]), row.get("user_created_day"),
+            row.get("first_user_message_day"), last_day,
+            count(row, "user_messages"), count(row, "assistant_messages"),
+            count(row, "total_messages"), count(row, "active_days"),
+            count(row, "active_months"),
+            ratio(count(row, "user_messages"), count(row, "active_days")),
+            (window.end_day - last_day).days if last_day is not None else None,
+        ])
+    return [
+        ("YTD KPI Summary", ["KPI", "Value", "Definition"], summary),
+        ("Monthly Activity", [
+            "Month", "Unique Messaging Users", "New Users", "User Messages",
+            "Agent Messages", "Total Messages", "Days with User Activity",
+        ], monthly),
+        ("YTD Mobile Analytics", [
+            "Mobile Number", "User Record Created", "First YTD User Message",
+            "Last YTD User Message", "User Messages", "Agent Messages",
+            "Total Messages", "Active Days", "Active Months",
+            "User Messages per Active Day", "Days Since Last User Message",
+        ], mobile_analytics),
+    ]
 
 
 def index_by_day(rows: list[dict[str, Any]]) -> dict[date, dict[str, Any]]:
@@ -747,21 +856,10 @@ def render_table(headers: list[tuple[str, str]], rows: list[list[Any]]) -> str:
     )
 
 
-def render_kpi_card(label: str, value: str) -> str:
-    return f"""
-    <td class="kpi-cell" style="width:50%;padding:8px;vertical-align:top;">
-      <div class="kpi-card" style="border:1px solid #e5e7eb;border-radius:8px;padding:14px;background:#ffffff;min-height:74px;box-sizing:border-box;">
-        <div style="font-size:13px;color:#4b5563;margin-bottom:8px;line-height:1.3;">{escape(label)}</div>
-        <div style="font-size:24px;font-weight:700;color:#111827;line-height:1.15;">{escape(value)}</div>
-      </div>
-    </td>
-    """
-
-
 def build_mobile_feature_usage_sheet(
     report: dict[str, Any],
 ) -> tuple[list[str], list[list[Any]]]:
-    mobile_records: dict[str, dict[str, dict[str, int]]] = {}
+    mobile_records: dict[str, dict[str, int]] = {}
     total_messages: dict[str, int] = {}
     extra_features = set()
 
@@ -778,128 +876,92 @@ def build_mobile_feature_usage_sheet(
         if not event_name:
             continue
         mobile_records.setdefault(mobile, {})
-        counts = mobile_records[mobile].setdefault(
-            event_name,
-            {"attempts": 0, "successes": 0, "failures": 0},
-        )
-        counts["attempts"] += int(row.get("usage_count") or 0)
-        counts["successes"] += int(row.get("success_count") or 0)
-        counts["failures"] += int(row.get("failure_count") or 0)
+        mobile_records[mobile][event_name] = mobile_records[mobile].get(
+            event_name, 0
+        ) + int(row.get("usage_count") or 0)
         if event_name not in FEATURE_USAGE_COLUMNS:
             extra_features.add(event_name)
 
     feature_columns = FEATURE_USAGE_COLUMNS + sorted(extra_features)
-    feature_headers = [
-        f"{feature} - {metric}"
-        for feature in feature_columns
-        for metric in ("Attempts", "Successful", "Failed")
-    ]
-    headers = ["Mobile Number", *feature_headers, "Total Messages"]
+    headers = ["Mobile Number", *feature_columns, "Total Messages"]
     rows = []
     for mobile in sorted(mobile_records):
         feature_counts = mobile_records[mobile]
         rows.append([
             mobile,
-            *[
-                feature_counts.get(feature, {}).get(metric, 0)
-                for feature in feature_columns
-                for metric in ("attempts", "successes", "failures")
-            ],
+            *[feature_counts.get(feature, 0) for feature in feature_columns],
             total_messages.get(mobile, 0),
         ])
 
     return headers, rows
 
 
-def build_report_summary_tables(
-    report: dict[str, Any],
-    window: DateWindow,
-) -> list[tuple[str, list[str], list[list[Any]]]]:
+def build_top_kpi_totals(report: dict[str, Any], window: DateWindow) -> dict[str, int]:
     daily_by_day = index_by_day(report["daily_rows"])
     new_users_by_day = index_by_day(report["new_user_rows"])
-    api_rows = report["api_rows"]
-    feature_usage_rows = report["feature_usage_rows"]
-    completion_rows = aggregate_flow_completion_rows(api_rows)
-    flow_summary_rows = aggregate_flow_summary_rows(api_rows)
+    unique_mobiles = {
+        str(row.get("mobile_number") or "").strip()
+        for row in report["mobile_message_rows"]
+        if str(row.get("mobile_number") or "").strip()
+    }
 
     totals = {
-        "unique_users": 0,
+        "unique_users": len(unique_mobiles),
         "user_messages": 0,
         "assistant_messages": 0,
         "new_users": 0,
+    }
+
+    for day in day_range(window):
+        daily = daily_by_day.get(day, {})
+        new_users = new_users_by_day.get(day, {})
+        totals["user_messages"] += int(daily.get("user_messages") or 0)
+        totals["assistant_messages"] += int(daily.get("assistant_messages") or 0)
+        totals["new_users"] += int(new_users.get("new_users") or 0)
+
+    return totals
+
+
+def build_report_summary_tables(
+    report: dict[str, Any],
+    window: DateWindow,
+    *,
+    include_feature_usage: bool = True,
+) -> list[tuple[str, list[str], list[list[Any]]]]:
+    api_rows = report["api_rows"]
+    feature_usage_rows = report["feature_usage_rows"] if include_feature_usage else []
+    completion_rows = aggregate_flow_completion_rows(api_rows)
+    top_totals = build_top_kpi_totals(report, window)
+    api_totals = {
         "completed_flow_actions": 0,
         "api_calls": 0,
         "api_success": 0,
         "api_failure": 0,
     }
-    for day in day_range(window):
-        daily = daily_by_day.get(day, {})
-        new_users = new_users_by_day.get(day, {})
-        totals["unique_users"] += int(daily.get("unique_users") or 0)
-        totals["user_messages"] += int(daily.get("user_messages") or 0)
-        totals["assistant_messages"] += int(daily.get("assistant_messages") or 0)
-        totals["new_users"] += int(new_users.get("new_users") or 0)
 
     for row in api_rows:
-        totals["api_calls"] += int(row.get("total_calls") or 0)
-        totals["api_success"] += int(row.get("success_calls") or 0)
-        totals["api_failure"] += int(row.get("failure_calls") or 0)
+        api_totals["api_calls"] += int(row.get("total_calls") or 0)
+        api_totals["api_success"] += int(row.get("success_calls") or 0)
+        api_totals["api_failure"] += int(row.get("failure_calls") or 0)
 
     for row in completion_rows:
-        totals["completed_flow_actions"] += int(row.get("success_calls") or 0)
+        api_totals["completed_flow_actions"] += int(row.get("success_calls") or 0)
 
     top_summary = [
-        ["Total Unique Users", int(totals["unique_users"])],
-        ["New Users Came", int(totals["new_users"])],
-        ["Total User Messages", int(totals["user_messages"])],
-        ["Total Agent Messages", int(totals["assistant_messages"])],
-        ["Completed Flow Actions", int(totals["completed_flow_actions"])],
-        ["Evolve API Hits", int(totals["api_calls"])],
-        ["Evolve API Failures", int(totals["api_failure"])],
+        ["Total Unique Users", int(top_totals["unique_users"])],
+        ["New Users Came", int(top_totals["new_users"])],
+        ["Total User Messages", int(top_totals["user_messages"])],
+        ["Total Agent Messages", int(top_totals["assistant_messages"])],
     ]
-
-    daily_summary = []
-    for day in day_range(window):
-        daily = daily_by_day.get(day, {})
-        new_users = new_users_by_day.get(day, {})
-        daily_summary.append([
-            day.isoformat(),
-            int(daily.get("unique_users") or 0),
-            int(daily.get("user_messages") or 0),
-            int(daily.get("assistant_messages") or 0),
-            int(new_users.get("new_users") or 0),
-        ])
 
     feature_usage = []
     for row in feature_usage_rows:
-        attempts = int(row.get("usage_count") or 0)
-        successes = int(row.get("success_count") or 0)
-        failures = int(row.get("failure_count") or 0)
         feature_usage.append([
             row["day"].isoformat(),
             row.get("event_name") or "",
             row.get("flow_name") or "",
             int(row.get("unique_users") or 0),
-            attempts,
-            successes,
-            failures,
-            pct(successes, attempts),
-        ])
-
-    flow_summary = []
-    for row in flow_summary_rows:
-        total = int(row.get("total_calls") or 0)
-        success = int(row.get("success_calls") or 0)
-        flow_summary.append([
-            row.get("flow") or "",
-            int(row.get("completed_actions") or 0),
-            int(row.get("completion_attempts") or 0),
-            total,
-            success,
-            int(row.get("failure_calls") or 0),
-            pct(success, total),
-            row.get("apis_hit") or "-",
-            row.get("action_names") or "-",
+            int(row.get("usage_count") or 0),
         ])
 
     completion = []
@@ -933,47 +995,11 @@ def build_report_summary_tables(
 
     return [
         ("Top KPI Summary", ["KPI", "Value"], top_summary),
-        ("KPI Names", ["KPI", "What It Indicates"], [list(row) for row in KPI_DEFINITIONS]),
-        (
-            "Daily KPI Summary",
-            [
-                "Day",
-                "Total Unique Users",
-                "Total User Messages",
-                "Total Agent Messages",
-                "New Users Came",
-            ],
-            daily_summary,
-        ),
-        (
+        *([(
             "Feature Usage",
-            [
-                "Day",
-                "Feature",
-                "Flow",
-                "Unique Users",
-                "Attempts",
-                "Successful",
-                "Failed",
-                "Success %",
-            ],
+            ["Day", "Feature", "Flow", "Unique Users", "Usage Count"],
             feature_usage,
-        ),
-        (
-            "Flow Details Summary",
-            [
-                "Flow",
-                "Completed Flow Actions",
-                "Completion Attempts",
-                "Evolve API Hits",
-                "Successful Hits",
-                "Evolve API Failures",
-                "Success %",
-                "APIs Hit",
-                "Tracked Action KPIs",
-            ],
-            flow_summary,
-        ),
+        )] if include_feature_usage else []),
         (
             "Flow Completion KPIs",
             ["Day", "KPI", "Flow", "Completion API", "Completed", "Attempts", "Failed"],
@@ -1036,7 +1062,9 @@ def _append_excel_table(ws, title: str, headers: list[str], rows: list[list[Any]
     return start_row + 4
 
 
-def build_excel_report(report: dict[str, Any], window: DateWindow) -> tuple[str, bytes]:
+def build_excel_report(
+    report: dict[str, Any], window: DateWindow, ytd_report: dict[str, Any]
+) -> tuple[str, bytes]:
     try:
         from openpyxl import Workbook
         from openpyxl.styles import Alignment, Font, PatternFill
@@ -1079,6 +1107,45 @@ def build_excel_report(report: dict[str, Any], window: DateWindow) -> tuple[str,
         next_row = _append_excel_table(ws_summary, title, headers, rows, next_row)
     _set_column_widths(ws_summary)
 
+    ytd_window = build_ytd_window(window)
+    ws_ytd = workbook.create_sheet("YTD KPI Report")
+    ws_ytd.cell(row=1, column=1, value="Sintex Agent Year-to-Date KPI Report")
+    ws_ytd.cell(
+        row=1, column=3,
+        value=f"Period: {ytd_window.start_day.isoformat()} to {ytd_window.end_day.isoformat()}",
+    )
+    ws_ytd["A1"].font = Font(bold=True, size=14)
+    ws_ytd["C1"].font = Font(color="4B5563")
+    next_row = 3
+    for title, headers, rows in build_ytd_summary_tables(ytd_report, ytd_window):
+        header_row = next_row + 1
+        next_row = _append_excel_table(ws_ytd, title, headers, rows, next_row)
+        if title == "YTD KPI Summary":
+            for row_number in range(header_row + 1, header_row + len(rows) + 1):
+                value_cell = ws_ytd.cell(row=row_number, column=2)
+                value_cell.number_format = "#,##0.00" if isinstance(value_cell.value, float) else "#,##0"
+                ws_ytd.row_dimensions[row_number].height = 45
+        elif title == "Monthly Activity":
+            for row_number in range(header_row + 1, header_row + len(rows) + 1):
+                ws_ytd.cell(row=row_number, column=1).number_format = "mmm yyyy"
+        elif title == "YTD Mobile Analytics":
+            for row_number in range(header_row + 1, header_row + len(rows) + 1):
+                mobile_cell = ws_ytd.cell(row=row_number, column=1)
+                mobile_cell.data_type = "s"
+                mobile_cell.number_format = "@"
+                for column in (2, 3, 4):
+                    ws_ytd.cell(row=row_number, column=column).number_format = "dd mmm yyyy"
+                for column in range(5, 12):
+                    ws_ytd.cell(row=row_number, column=column).number_format = "#,##0"
+        ws_ytd.row_dimensions[header_row].height = 45
+    ws_ytd.freeze_panes = "B5"
+    _set_column_widths(ws_ytd)
+    ws_ytd.column_dimensions["A"].width = 43
+    ws_ytd.column_dimensions["B"].width = 24
+    ws_ytd.column_dimensions["C"].width = 80
+    ws_ytd.merge_cells("A1:B1")
+    ws_ytd.row_dimensions[1].height = 30
+
     for ws in workbook.worksheets:
         for row in ws.iter_rows():
             for cell in row:
@@ -1093,120 +1160,14 @@ def build_excel_report(report: dict[str, Any], window: DateWindow) -> tuple[str,
 
 
 def build_report_html(report: dict[str, Any], window: DateWindow) -> str:
-    daily_by_day = index_by_day(report["daily_rows"])
-    new_users_by_day = index_by_day(report["new_user_rows"])
-    api_rows = report["api_rows"]
-    feature_usage_rows = report["feature_usage_rows"]
-    completion_rows = aggregate_flow_completion_rows(api_rows)
-    flow_summary_rows = aggregate_flow_summary_rows(api_rows)
+    totals = build_top_kpi_totals(report, window)
 
-    totals = {
-        "unique_users": 0,
-        "user_messages": 0,
-        "assistant_messages": 0,
-        "new_users": 0,
-        "completed_flow_actions": 0,
-        "api_calls": 0,
-        "api_success": 0,
-        "api_failure": 0,
-    }
-
-    for day in day_range(window):
-        daily = daily_by_day.get(day, {})
-        new_users = new_users_by_day.get(day, {})
-        totals["unique_users"] += int(daily.get("unique_users") or 0)
-        totals["user_messages"] += int(daily.get("user_messages") or 0)
-        totals["assistant_messages"] += int(daily.get("assistant_messages") or 0)
-        totals["new_users"] += int(new_users.get("new_users") or 0)
-
-    for row in api_rows:
-        totals["api_calls"] += int(row.get("total_calls") or 0)
-        totals["api_success"] += int(row.get("success_calls") or 0)
-        totals["api_failure"] += int(row.get("failure_calls") or 0)
-
-    for row in completion_rows:
-        totals["completed_flow_actions"] += int(row.get("success_calls") or 0)
-
-    definition_table_rows = [
-        [name, description] for name, description in KPI_DEFINITIONS
+    top_kpi_rows = [
+        ["Total Unique Users", fmt_int(totals["unique_users"])],
+        ["New Users Came", fmt_int(totals["new_users"])],
+        ["Total User Messages", fmt_int(totals["user_messages"])],
+        ["Total Agent Messages", fmt_int(totals["assistant_messages"])],
     ]
-
-    daily_table_rows = []
-    for day in day_range(window):
-        daily = daily_by_day.get(day, {})
-        new_users = new_users_by_day.get(day, {})
-        daily_table_rows.append([
-            day.isoformat(),
-            fmt_int(daily.get("unique_users")),
-            fmt_int(daily.get("user_messages")),
-            fmt_int(daily.get("assistant_messages")),
-            fmt_int(new_users.get("new_users")),
-        ])
-
-    feature_usage_table_rows = []
-    for row in feature_usage_rows:
-        attempts = int(row.get("usage_count") or 0)
-        successes = int(row.get("success_count") or 0)
-        failures = int(row.get("failure_count") or 0)
-        feature_usage_table_rows.append([
-            row["day"].isoformat(),
-            row.get("event_name") or "",
-            row.get("flow_name") or "",
-            fmt_int(row.get("unique_users")),
-            fmt_int(attempts),
-            fmt_int(successes),
-            fmt_int(failures),
-            pct(successes, attempts),
-        ])
-
-    flow_summary_table_rows = []
-    for row in flow_summary_rows:
-        total = int(row.get("total_calls") or 0)
-        success = int(row.get("success_calls") or 0)
-        attempts = int(row.get("completion_attempts") or 0)
-        completed = int(row.get("completed_actions") or 0)
-        flow_summary_table_rows.append([
-            row.get("flow") or "",
-            fmt_int(completed),
-            fmt_int(attempts),
-            fmt_int(total),
-            fmt_int(success),
-            fmt_int(row.get("failure_calls")),
-            pct(success, total),
-            row.get("apis_hit") or "-",
-            row.get("action_names") or "-",
-        ])
-
-    completion_table_rows = []
-    for row in completion_rows:
-        attempts = int(row.get("total_calls") or 0)
-        completed = int(row.get("success_calls") or 0)
-        completion_table_rows.append([
-            row["day"].isoformat(),
-            row.get("kpi_name") or "",
-            row.get("flow") or "",
-            row.get("api_name") or "",
-            fmt_int(completed),
-            fmt_int(attempts),
-            fmt_int(row.get("failure_calls")),
-        ])
-
-    api_health_table_rows = []
-    for row in api_rows:
-        total = int(row.get("total_calls") or 0)
-        api_health_table_rows.append([
-            row["day"].isoformat(),
-            row.get("api_name") or "",
-            row.get("method") or "",
-            row.get("endpoint") or "",
-            fmt_int(total),
-            fmt_int(row.get("success_calls")),
-            fmt_int(row.get("failure_calls")),
-            fmt_ms(average_ms(row.get("total_duration_ms"), total)),
-            fmt_ms(row.get("max_duration_ms")),
-            format_status_codes(row),
-            format_error_messages(row),
-        ])
 
     period_label = (
         window.start_day.isoformat()
@@ -1227,125 +1188,16 @@ def build_report_html(report: dict[str, Any], window: DateWindow) -> str:
     <div class="hero" style="background:#111827;color:#ffffff;border-radius:8px;padding:22px 24px;">
       <div class="hero-copy" style="font-size:13px;color:#d1d5db;line-height:1.4;">{escape(window.timezone_name)}</div>
       <div class="hero-title" style="font-size:26px;font-weight:700;line-height:1.2;margin-top:4px;">{escape(title_label)}</div>
-      <div class="hero-copy" style="font-size:13px;color:#d1d5db;line-height:1.45;margin-top:8px;">
-        Daily usage, API-backed flow completions, and Evolve API health.
-      </div>
     </div>
 
-    <table class="kpi-table" role="presentation" style="width:100%;border-collapse:collapse;margin-top:14px;">
-      <tr>
-        {render_kpi_card("Total Unique Users", fmt_int(totals["unique_users"]))}
-        {render_kpi_card("New Users Came", fmt_int(totals["new_users"]))}
-      </tr>
-      <tr>
-        {render_kpi_card("Total User Messages", fmt_int(totals["user_messages"]))}
-        {render_kpi_card("Total Agent Messages", fmt_int(totals["assistant_messages"]))}
-      </tr>
-      <tr>
-        {render_kpi_card("Completed Flow Actions", fmt_int(totals["completed_flow_actions"]))}
-        {render_kpi_card("Evolve API Hits", fmt_int(totals["api_calls"]))}
-      </tr>
-      <tr>
-        {render_kpi_card("Evolve API Failures", fmt_int(totals["api_failure"]))}
-      </tr>
-    </table>
-
     <section class="section" style="background:#ffffff;border:1px solid #dfe5ee;border-radius:8px;padding:18px;margin-top:14px;">
-      <h2 style="font-size:17px;line-height:1.3;margin:0 0 10px;">KPI Names</h2>
+      <h2 style="font-size:17px;line-height:1.3;margin:0 0 10px;">Top KPI Summary</h2>
       {render_table(
         [
             ("KPI", "left"),
-            ("What It Indicates", "left"),
+            ("Value", "right"),
         ],
-        definition_table_rows,
-      )}
-    </section>
-
-    <section class="section" style="background:#ffffff;border:1px solid #dfe5ee;border-radius:8px;padding:18px;margin-top:14px;">
-      <h2 style="font-size:17px;line-height:1.3;margin:0 0 10px;">Daily KPI Summary</h2>
-      {render_table(
-        [
-            ("Day", "left"),
-            ("Total Unique Users", "right"),
-            ("Total User Messages", "right"),
-            ("Total Agent Messages", "right"),
-            ("New Users Came", "right"),
-        ],
-        daily_table_rows,
-      )}
-    </section>
-
-    <section class="section" style="background:#ffffff;border:1px solid #dfe5ee;border-radius:8px;padding:18px;margin-top:14px;">
-      <h2 style="font-size:17px;line-height:1.3;margin:0 0 10px;">Feature Usage</h2>
-      {render_table(
-        [
-            ("Day", "left"),
-            ("Feature", "left"),
-            ("Flow", "left"),
-            ("Unique Users", "right"),
-            ("Attempts", "right"),
-            ("Successful", "right"),
-            ("Failed", "right"),
-            ("Success %", "right"),
-        ],
-        feature_usage_table_rows,
-      )}
-    </section>
-
-    <section class="section" style="background:#ffffff;border:1px solid #dfe5ee;border-radius:8px;padding:18px;margin-top:14px;">
-      <h2 style="font-size:17px;line-height:1.3;margin:0 0 10px;">Flow Details Summary</h2>
-      {render_table(
-        [
-            ("Flow", "left"),
-            ("Completed Flow Actions", "right"),
-            ("Completion Attempts", "right"),
-            ("Evolve API Hits", "right"),
-            ("Successful Hits", "right"),
-            ("Evolve API Failures", "right"),
-            ("Success %", "right"),
-            ("APIs Hit", "left"),
-            ("Tracked Action KPIs", "left"),
-        ],
-        flow_summary_table_rows,
-      )}
-    </section>
-
-    <section class="section" style="background:#ffffff;border:1px solid #dfe5ee;border-radius:8px;padding:18px;margin-top:14px;">
-      <h2 style="font-size:17px;line-height:1.3;margin:0 0 10px;">Flow Completion KPIs</h2>
-      {render_table(
-        [
-            ("Day", "left"),
-            ("KPI", "left"),
-            ("Flow", "left"),
-            ("Completion API", "left"),
-            ("Completed", "right"),
-            ("Attempts", "right"),
-            ("Failed", "right"),
-        ],
-        completion_table_rows,
-      )}
-      <p style="font-size:12px;color:#6b7280;margin:10px 0 0;">
-        Completed count uses successful Evolve API calls only. Failed attempts are shown separately.
-      </p>
-    </section>
-
-    <section class="section" style="background:#ffffff;border:1px solid #dfe5ee;border-radius:8px;padding:18px;margin-top:14px;">
-      <h2 style="font-size:17px;line-height:1.3;margin:0 0 10px;">Evolve API Health</h2>
-      {render_table(
-        [
-            ("Day", "left"),
-            ("API", "left"),
-            ("Method", "left"),
-            ("Endpoint", "left"),
-            ("Total Hits", "right"),
-            ("Successful Hits", "right"),
-            ("Failed Hits", "right"),
-            ("Average Time", "right"),
-            ("Max Time", "right"),
-            ("Status Codes", "left"),
-            ("Errors", "left"),
-        ],
-        api_health_table_rows,
+        top_kpi_rows,
       )}
     </section>
   </div>
@@ -1355,136 +1207,17 @@ def build_report_html(report: dict[str, Any], window: DateWindow) -> str:
 
 
 def build_report_text(report: dict[str, Any], window: DateWindow) -> str:
-    daily_by_day = index_by_day(report["daily_rows"])
-    new_users_by_day = index_by_day(report["new_user_rows"])
-    api_rows = report["api_rows"]
-    feature_usage_rows = report["feature_usage_rows"]
-    completion_rows = aggregate_flow_completion_rows(api_rows)
-    flow_summary_rows = aggregate_flow_summary_rows(api_rows)
-    totals = {
-        "unique_users": 0,
-        "user_messages": 0,
-        "assistant_messages": 0,
-        "new_users": 0,
-        "completed_flow_actions": 0,
-        "api_calls": 0,
-        "api_failure": 0,
-    }
-
-    for day in day_range(window):
-        daily = daily_by_day.get(day, {})
-        new_users = new_users_by_day.get(day, {})
-        totals["unique_users"] += int(daily.get("unique_users") or 0)
-        totals["user_messages"] += int(daily.get("user_messages") or 0)
-        totals["assistant_messages"] += int(daily.get("assistant_messages") or 0)
-        totals["new_users"] += int(new_users.get("new_users") or 0)
-
-    for row in completion_rows:
-        totals["completed_flow_actions"] += int(row.get("success_calls") or 0)
-
-    for row in api_rows:
-        totals["api_calls"] += int(row.get("total_calls") or 0)
-        totals["api_failure"] += int(row.get("failure_calls") or 0)
+    totals = build_top_kpi_totals(report, window)
 
     lines = [
         f"Sintex Agent KPI Report for {window.start_day} to {window.end_day} ({window.timezone_name})",
-        "",
-        "KPI Names:",
-    ]
-    for name, description in KPI_DEFINITIONS:
-        lines.append(f"- {name}: {description}")
-
-    lines.extend([
         "",
         "Top KPI Summary:",
         f"- Total Unique Users: {fmt_int(totals['unique_users'])}",
         f"- New Users Came: {fmt_int(totals['new_users'])}",
         f"- Total User Messages: {fmt_int(totals['user_messages'])}",
         f"- Total Agent Messages: {fmt_int(totals['assistant_messages'])}",
-        f"- Completed Flow Actions: {fmt_int(totals['completed_flow_actions'])}",
-        f"- Evolve API Hits: {fmt_int(totals['api_calls'])}",
-        f"- Evolve API Failures: {fmt_int(totals['api_failure'])}",
-        "",
-        "Daily KPI Summary:",
-    ])
-    for day in day_range(window):
-        daily = daily_by_day.get(day, {})
-        new_users = new_users_by_day.get(day, {})
-        lines.append(
-            f"- {day}: total_unique_users={fmt_int(daily.get('unique_users'))}, "
-            f"total_user_messages={fmt_int(daily.get('user_messages'))}, "
-            f"total_agent_messages={fmt_int(daily.get('assistant_messages'))}, "
-            f"new_users_came={fmt_int(new_users.get('new_users'))}"
-        )
-
-    lines.extend([
-        "",
-        "Feature Usage:",
-    ])
-    if not feature_usage_rows:
-        lines.append("- No feature attempts for this period.")
-    for row in feature_usage_rows:
-        attempts = int(row.get("usage_count") or 0)
-        successes = int(row.get("success_count") or 0)
-        lines.append(
-            f"- {row['day']} {row['event_name']} ({row['flow_name']}): "
-            f"unique_users={fmt_int(row.get('unique_users'))}, "
-            f"attempts={fmt_int(attempts)}, "
-            f"successful={fmt_int(successes)}, "
-            f"failed={fmt_int(row.get('failure_count'))}, "
-            f"success_rate={pct(successes, attempts)}"
-        )
-
-    lines.extend([
-        "",
-        "Flow Details Summary:",
-    ])
-    if not flow_summary_rows:
-        lines.append("- No Evolve API-backed flow activity for this period.")
-    for row in flow_summary_rows:
-        total = int(row.get("total_calls") or 0)
-        success = int(row.get("success_calls") or 0)
-        lines.append(
-            f"- {row['flow']}: completed_flow_actions="
-            f"{fmt_int(row.get('completed_actions'))}, "
-            f"completion_attempts={fmt_int(row.get('completion_attempts'))}, "
-            f"evolve_api_hits={fmt_int(total)}, "
-            f"successful_hits={fmt_int(success)}, "
-            f"evolve_api_failures={fmt_int(row.get('failure_calls'))}, "
-            f"success_rate={pct(success, total)}, "
-            f"apis_hit={row.get('apis_hit') or '-'}, "
-            f"tracked_action_kpis={row.get('action_names') or '-'}"
-        )
-
-    lines.append("")
-    lines.append("Flow Completion KPIs:")
-    if not completion_rows:
-        lines.append("- No completed API-backed flow actions for this period.")
-    for row in completion_rows:
-        attempts = int(row.get("total_calls") or 0)
-        completed = int(row.get("success_calls") or 0)
-        lines.append(
-            f"- {row['day']} {row['kpi_name']} ({row['flow']}): "
-            f"completed={fmt_int(completed)}, attempts={fmt_int(attempts)}, "
-            f"failed={fmt_int(row.get('failure_calls'))}"
-        )
-
-    lines.append("")
-    lines.append("Evolve API Health:")
-    if not api_rows:
-        lines.append("- No Evolve API hits for this period.")
-    for row in api_rows:
-        total = int(row.get("total_calls") or 0)
-        lines.append(
-            f"- {row['day']} {row['api_name']} {row['endpoint']}: "
-            f"total_hits={fmt_int(total)}, "
-            f"successful_hits={fmt_int(row.get('success_calls'))}, "
-            f"failed_hits={fmt_int(row.get('failure_calls'))}, "
-            f"average_time={fmt_ms(average_ms(row.get('total_duration_ms'), total))}, "
-            f"max_time={fmt_ms(row.get('max_duration_ms'))}, "
-            f"status_codes={format_status_codes(row)}, "
-            f"errors={format_error_messages(row)}"
-        )
+    ]
     return "\n".join(lines)
 
 
@@ -1596,7 +1329,14 @@ async def async_main() -> None:
     )
     html_body = build_report_html(report, window)
     text_body = build_report_text(report, window)
-    excel_filename, excel_bytes = build_excel_report(report, window)
+    ytd_window = build_ytd_window(window)
+    logger.info(
+        "Loading historical YTD data | start_day=%s | end_day=%s | sources=conversations,users,messages",
+        ytd_window.start_day,
+        ytd_window.end_day,
+    )
+    ytd_report = await load_ytd_report_data(database_url, ytd_window)
+    excel_filename, excel_bytes = build_excel_report(report, window, ytd_report)
     logger.info(
         "Excel report generated | filename=%s | size_bytes=%s",
         excel_filename,
