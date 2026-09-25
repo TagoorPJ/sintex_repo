@@ -75,6 +75,12 @@ async def call_evolve_api(payload: Dict[str, Any]) -> Dict[str, Any]:
 
     except httpx.HTTPStatusError as e:
         logger.error(f"[EVOLVE] HTTP error: {str(e)}")
+        try:
+            err_data = e.response.json()
+            if isinstance(err_data, dict) and err_data.get("message"):
+                return {"status": "error", "message": err_data.get("message")}
+        except Exception:
+            pass
         return {"status": "error", "message": str(e)}
 
     except Exception as e:
@@ -252,7 +258,8 @@ async def submit_user_registration(payload: str) -> str:
       Do NOT end the registration. Wait for the new pincode and call this tool again.
 
     - On other failure:
-    Returns JSON: {"status": "error", "message": "Registration failed. Please try again later."}
+    Returns JSON: {"status": "error", "message": "<specific error reason from API>"}
+    → When you receive this, clearly inform the user about the exact reason given in the message.
 
     Important rules:
     - Never call the tool without mandatory fields
@@ -359,12 +366,13 @@ async def submit_user_registration(payload: str) -> str:
     api_result = await call_evolve_api(api_payload)
 
     if api_result.get("status") == "error":
-        api_message = (api_result.get("message") or "").lower()
+        api_message = (api_result.get("message") or "").strip()
+        last_validation_message = None
 
         # Evolve may know this mobile as an existing member while our local
         # database is missing its member ID. Recover that ID through the
         # validation endpoint instead of leaving the user stuck in registration.
-        if "already registered" in api_message:
+        if "already registered" in api_message.lower():
             logger.info(
                 "[REGISTRATION TOOL] Existing Evolve registration detected; "
                 "recovering member ID through validation | mobile=%s",
@@ -380,6 +388,8 @@ async def submit_user_registration(payload: str) -> str:
             for candidate in validation_candidates:
                 try:
                     candidate_result = await validate_member_by_mobile(candidate)
+                    if candidate_result.message:
+                        last_validation_message = candidate_result.message
                 except MemberValidationError:
                     logger.warning(
                         "[REGISTRATION TOOL] Existing-member validation attempt "
@@ -407,24 +417,27 @@ async def submit_user_registration(payload: str) -> str:
             else:
                 logger.error(
                     "[REGISTRATION TOOL] Evolve reported already registered "
-                    "but validation found no member ID | mobile=%s",
+                    "but validation found no member ID | mobile=%s | validation_message=%s",
                     mobile,
+                    last_validation_message,
                 )
 
         if api_result.get("status") == "success":
             pass
-        elif "pincode" in api_message:
-            logger.error(f"[REGISTRATION TOOL] API failed: {api_result}")
-            return json.dumps({
-                "status": "pincode_error",
-                "message": "pincode_not_found",
-            })
         else:
-            logger.error(f"[REGISTRATION TOOL] API failed: {api_result}")
-            return json.dumps({
-                "status": "error",
-                "message": "Registration failed. Please try again later.",
-            })
+            error_reason = last_validation_message or api_result.get("message") or "Registration failed. Please try again later."
+            if "pincode" in error_reason.lower() or "pincode" in api_message.lower():
+                logger.error(f"[REGISTRATION TOOL] API failed (pincode): {api_result} | reason: {error_reason}")
+                return json.dumps({
+                    "status": "pincode_error",
+                    "message": "pincode_not_found",
+                })
+            else:
+                logger.error(f"[REGISTRATION TOOL] API failed: {api_result} | reason: {error_reason}")
+                return json.dumps({
+                    "status": "error",
+                    "message": error_reason,
+                })
 
     logger.info("[REGISTRATION TOOL] Success")
 

@@ -1,13 +1,14 @@
 from __future__ import annotations
 
 import os
+from typing import Any
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 import json
 from app import crud
 from app.chatbot import chatbot_orchestrator
 from app.database import get_db
-from app.schemas import ChatRequest, ChatResponse
+from app.schemas import ChatRequest, ChatResponse, TokenUsageSchema
 from app.utils.logger import get_logger
 from app.utils.observability import bind_trace_context
 from app.models import ConversationStage
@@ -27,6 +28,24 @@ from app.analytics.feature_usage_tracker import bind_feature_usage_context
 logger = get_logger(__name__)
 
 router = APIRouter(prefix="/chat", tags=["chat"])
+
+
+def _format_history_payload(history_rows: list) -> list[dict[str, Any]]:
+    return [
+        {
+            "sender": r.sender,
+            "message": r.message,
+            "prompt_tokens": getattr(r, "prompt_tokens", 0),
+            "completion_tokens": getattr(r, "completion_tokens", 0),
+            "total_tokens": getattr(r, "total_tokens", 0),
+            "created_at": (
+                r.created_at.isoformat()
+                if hasattr(r, "created_at")
+                else None
+            ),
+        }
+        for r in history_rows
+    ]
 
 
 def _log_user_msg(conv_id: int, message: str) -> None:
@@ -1113,6 +1132,10 @@ async def chat_endpoint(
         await db.commit()
 
     is_complete = agent_result.get("is_complete", False)
+    token_usage = agent_result.get("token_usage", {}) or {}
+    prompt_tokens = token_usage.get("prompt", 0)
+    completion_tokens = token_usage.get("completion", 0)
+    total_tokens = token_usage.get("total", 0)
 
     # ── 14. SAVE ASSISTANT RESPONSE ──────────────────────────────
     await crud.save_message(
@@ -1121,6 +1144,9 @@ async def chat_endpoint(
         user_id=user.id,
         sender="assistant",
         message=assistant_reply,
+        prompt_tokens=prompt_tokens,
+        completion_tokens=completion_tokens,
+        total_tokens=total_tokens,
     )
 
     # ── 15. HANDLE COMPLETION ────────────────────────────────────
@@ -1137,20 +1163,18 @@ async def chat_endpoint(
         limit=50,
     )
 
-    history_payload = [
-        {
-            "sender": row.sender,
-            "message": row.message,
-            "created_at": row.created_at.isoformat() if hasattr(row, "created_at") else None
-        }
-        for row in history_rows
-    ]
+    history_payload = _format_history_payload(history_rows)
 
     chat_response = ChatResponse(
         conversation_id=conversation.id,
         response=assistant_reply,
         history=history_payload,
         status="active",
+        token_usage=TokenUsageSchema(
+            prompt_tokens=prompt_tokens,
+            completion_tokens=completion_tokens,
+            total_tokens=total_tokens,
+        ),
         language_change_requested=language_change_requested,
         target_language=target_language,
         user_id_evolve=user_id_from_tool,

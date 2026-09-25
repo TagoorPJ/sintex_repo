@@ -18,6 +18,7 @@ logger = get_logger(__name__)
 class MemberValidationResult:
     member_id: str | None
     is_valid: bool
+    message: str | None = None
 
 
 class MemberValidationError(RuntimeError):
@@ -81,6 +82,7 @@ async def validate_member_by_mobile(mobile_number: str) -> MemberValidationResul
 
     member_id = str(data.get("member_id") or "").strip()
     is_valid = bool(data.get("is_valid"))
+    message = str(data.get("message") or "").strip() or None
 
     if is_valid and not member_id:
         logger.error(
@@ -90,11 +92,13 @@ async def validate_member_by_mobile(mobile_number: str) -> MemberValidationResul
         raise MemberValidationError("Evolve validation response is inconsistent")
 
     logger.info(
-        "[MEMBER VALIDATION] completed | mobile=%s | member_found=%s",
+        "[MEMBER VALIDATION] completed | mobile=%s | member_found=%s | message=%s",
         mobile_number,
         bool(member_id),
+        message,
     )
     return MemberValidationResult(
         member_id=member_id or None,
         is_valid=is_valid and bool(member_id),
+        message=message,
     )

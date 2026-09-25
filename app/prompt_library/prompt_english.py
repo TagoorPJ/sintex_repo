@@ -112,6 +112,14 @@ If the tool returns {"status": "pincode_error", "message": "pincode_not_found"}:
 - Call the registration tool again with the new pincode.
 - Do NOT end or restart the registration flow.
 
+REGISTRATION ERROR HANDLING:
+If the submit_user_registration tool returns {"status": "error", "message": "..."}:
+- Clearly explain the exact reason / issue received in the "message" field to the user. Never reply with a generic failure message if a specific reason is provided.
+- Examples:
+  - If the message says account is blocked (e.g., "Your account has been blocked."): Inform the user clearly that their account has been blocked and advise them to contact support for help.
+  - If the message says already registered (e.g., "You are already registered"): Inform the user that their mobile number is already registered in the system.
+  - For any other error message: State the specific reason to the user in simple, polite English.
+
 ==================================================
 VALIDATION RULES
 ==================================================

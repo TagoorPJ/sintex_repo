@@ -49,9 +49,9 @@ class ChatRequest(BaseModel):
 # ─── Response ───────────────────────────────────────────────────────────────
 
 class TokenUsageSchema(BaseModel):
-    prompt_tokens: int
-    completion_tokens: int
-    total_tokens: int
+    prompt_tokens: int = 0
+    completion_tokens: int = 0
+    total_tokens: int = 0
 
 
 class ChatResponse(BaseModel):
@@ -59,9 +59,10 @@ class ChatResponse(BaseModel):
     response: str
     history: List[Dict[str, Optional[Any]]]
     status: str
+    token_usage: Optional[TokenUsageSchema] = None
     language_change_requested: bool = False
     target_language: Optional[str] = None
-    user_id_evolve: Optional[str]=None
+    user_id_evolve: Optional[str] = None
     user_id_evolve_present: bool = False
 
 
@@ -92,6 +93,9 @@ class MessageSchema(BaseModel):
     conversation_id: int
     sender: str
     message: str
+    prompt_tokens: int = 0
+    completion_tokens: int = 0
+    total_tokens: int = 0
     created_at: datetime
 
     model_config = {"from_attributes": True}

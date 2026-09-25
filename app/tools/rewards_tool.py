@@ -6,6 +6,7 @@ from dotenv import load_dotenv
 import os
 from app.utils.logger import get_logger  # adjust path
 from app.utils.observability import timed_httpx_request
+
 logger = get_logger(__name__)
 load_dotenv()
 
@@ -16,8 +17,90 @@ HEADERS = {
     "program": os.getenv("EVOLVE_PROGRAM"),
     "app": os.getenv("EVOLVE_APP"),
     "Content-Type": "application/json",
-    "Authorization":os.getenv("EVOLVE_TOKEN")
+    "Authorization": os.getenv("EVOLVE_TOKEN")
 }
+
+
+def calculate_tier_info(points_val: Any) -> Dict[str, Any]:
+    try:
+        pts = float(points_val) if points_val is not None else 0.0
+    except (ValueError, TypeError):
+        pts = 0.0
+
+    pts_display = int(pts) if pts.is_integer() else pts
+    formatted_pts = f"{pts_display:,}" if isinstance(pts_display, int) else f"{pts_display:,.2f}"
+
+    if pts < 5000:
+        current_tier = "Bronze"
+        next_tier = "Silver"
+        target_pts = 5000
+        needed = target_pts - pts
+        needed_display = int(needed) if isinstance(needed, float) and needed.is_integer() else needed
+        formatted_needed = f"{needed_display:,}" if isinstance(needed_display, int) else f"{needed_display:,.2f}"
+        msg = (
+            f"Your current reward balance is {formatted_pts} points. "
+            f"You are currently in the Bronze tier. "
+            f"You need {formatted_needed} more points to reach the Silver tier."
+        )
+        return {
+            "points": pts_display,
+            "current_tier": current_tier,
+            "next_tier": next_tier,
+            "points_needed_for_next_tier": needed_display,
+            "message": msg,
+        }
+    elif pts < 35000:
+        current_tier = "Silver"
+        next_tier = "Gold"
+        target_pts = 35000
+        needed = target_pts - pts
+        needed_display = int(needed) if isinstance(needed, float) and needed.is_integer() else needed
+        formatted_needed = f"{needed_display:,}" if isinstance(needed_display, int) else f"{needed_display:,.2f}"
+        msg = (
+            f"Your current reward balance is {formatted_pts} points. "
+            f"You are currently in the Silver tier. "
+            f"You need {formatted_needed} more points to reach the Gold tier."
+        )
+        return {
+            "points": pts_display,
+            "current_tier": current_tier,
+            "next_tier": next_tier,
+            "points_needed_for_next_tier": needed_display,
+            "message": msg,
+        }
+    elif pts < 85000:
+        current_tier = "Gold"
+        next_tier = "Platinum"
+        target_pts = 85000
+        needed = target_pts - pts
+        needed_display = int(needed) if isinstance(needed, float) and needed.is_integer() else needed
+        formatted_needed = f"{needed_display:,}" if isinstance(needed_display, int) else f"{needed_display:,.2f}"
+        msg = (
+            f"Your current reward balance is {formatted_pts} points. "
+            f"You are currently in the Gold tier. "
+            f"You need {formatted_needed} more points to reach the Platinum tier."
+        )
+        return {
+            "points": pts_display,
+            "current_tier": current_tier,
+            "next_tier": next_tier,
+            "points_needed_for_next_tier": needed_display,
+            "message": msg,
+        }
+    else:
+        current_tier = "Platinum"
+        next_tier = None
+        msg = (
+            f"Your current reward balance is {formatted_pts} points. "
+            f"You are currently in the Platinum tier (the highest tier)."
+        )
+        return {
+            "points": pts_display,
+            "current_tier": current_tier,
+            "next_tier": next_tier,
+            "points_needed_for_next_tier": 0,
+            "message": msg,
+        }
 
 
 @tool("rewards_tool")
@@ -37,9 +120,9 @@ async def rewards_tool(
     - tier, level, or status
 
     Supported actions:
-    - "balance" → fetch current reward points balance
+    - "balance" → fetch current reward points balance and tier status
     - "history" → fetch recent transaction history
-    - "tier" → fetch current tier and associated points
+    - "tier" → fetch current tier, reward points balance, and points required for next tier
 
     Input requirements:
     Payload must be a valid JSON string containing:
@@ -63,28 +146,6 @@ async def rewards_tool(
     Response behavior:
     - On success: returns JSON with "status": "success" and a user-friendly "message"
     - On failure: returns JSON with "status": "error" and an appropriate error message
-
-    Examples:
-
-    Balance:
-    {
-    "action": "balance",
-    "user_id_evolve": "<from COLLECTED_DATA>"
-    }
-
-    History:
-    {
-    "action": "history",
-    "user_id_evolve": "<from COLLECTED_DATA>",
-    "limit": 5,
-    "offset": 1
-    }
-
-    Tier:
-    {
-    "action": "tier",
-    "user_id_evolve": "<from COLLECTED_DATA>"
-    }
     """
     logger.info(f"[VALIDATE] Calling API | mobile_number={mobile_number} | action={action}")
     # ── VALIDATION ───────────────────────────────
@@ -102,37 +163,6 @@ async def rewards_tool(
 
     try:
         async with httpx.AsyncClient(timeout=10.0) as client:
-
-            # # ── VALIDATE USER ─────────────────────────
-            # validate_url = f"{BASE_URL}/validate"
-
-            # validate_payload = {
-            #     "mobile_number": mobile_number
-            # }
-
-            # validate_resp = await client.post(
-            #     validate_url,
-            #     json=validate_payload,
-            #     headers=HEADERS
-            # )
-            # logger.info(f"[VALIDATE] Status={validate_resp.status_code} | response={validate_resp.text}")
-            # validate_result = validate_resp.json()
-            # is_valid = validate_result.get("is_valid")
-            # user_status = validate_result.get("user_id_status")
-            # logger.info(f"[VALIDATE CHECK] is_valid={is_valid} | user_id_status={user_status}")
-            # if validate_resp.status_code != 200:
-            #     return json.dumps({
-            #         "status": "error",
-            #         "message": "Unable to validate user."
-            #     })
-
-            # validate_result = validate_resp.json()
-
-            # if not validate_result.get("is_valid") or validate_result.get("user_id_status") != "APPROVED":
-            #     return json.dumps({
-            #         "status": "error",
-            #         "message": "Looks like you’re not active on Sintex Plumber Pride App yet. Don’t worry! Kindly reach out to our team for help."
-            #     })
 
             # ── BALANCE API ─────────────────────────
             if action == "balance":
@@ -164,9 +194,15 @@ async def rewards_tool(
                     })
 
                 points = result.get("points", 0)
+                tier_info = calculate_tier_info(points)
+
                 return json.dumps({
                     "status": "success",
-                    "message": f"Your current reward balance is {points} points."
+                    "points": tier_info["points"],
+                    "current_tier": tier_info["current_tier"],
+                    "next_tier": tier_info["next_tier"],
+                    "points_needed_for_next_tier": tier_info["points_needed_for_next_tier"],
+                    "message": tier_info["message"],
                 })
 
             # ── HISTORY API ─────────────────────────
@@ -257,12 +293,16 @@ async def rewards_tool(
                         "message": "Unable to fetch tier status."
                     })
 
-                tier = result.get("tier", "N/A")
                 points = result.get("points", 0)
+                tier_info = calculate_tier_info(points)
 
                 return json.dumps({
                     "status": "success",
-                    "message": f"You are currently in {tier} tier with {points} points."
+                    "points": tier_info["points"],
+                    "current_tier": tier_info["current_tier"],
+                    "next_tier": tier_info["next_tier"],
+                    "points_needed_for_next_tier": tier_info["points_needed_for_next_tier"],
+                    "message": tier_info["message"],
                 })
 
     except Exception as e:

@@ -109,6 +109,14 @@ PINCODE ERROR HANDLING:
 - नए pincode के साथ registration tool फिर से call करो।
 - Registration flow बंद या restart मत करो।
 
+REGISTRATION ERROR HANDLING:
+अगर submit_user_registration tool से {"status": "error", "message": "..."} मिले:
+- Tool के "message" फ़ील्ड में जो भी कारण/समस्या आई है, उसे user को स्पष्ट रूप से समझाएं। कोई सामान्य (generic) उत्तर मत दें।
+- उदाहरण के लिए:
+  - अगर message में खाता ब्लॉक होने की बात है (जैसे "Your account has been blocked."): User को स्पष्ट बताएं कि उनका खाता ब्लॉक कर दिया गया है और सहायता के लिए सपोर्ट से संपर्क करने को कहें।
+  - अगर message में पहले से पंजीकृत होने की बात है (जैसे "You are already registered"): User को बताएं कि यह मोबाइल नंबर पहले से सिस्टम में पंजीकृत है।
+  - किसी अन्य message के लिए: जो भी कारण आया है, उसे सरल हिंदी में user को बताएं।
+
 ==================================================
 VALIDATION
 ==================================================
@@ -178,8 +186,10 @@ REWARDS FLOW (बहुत सख्त)
 - Category → श्रेणी
 - Date → तारीख
 - Here is your recent points history → आपके हाल के लेनदेन इस प्रकार हैं
-- Your current reward balance is X points → आपका वर्तमान रिवॉर्ड बैलेंस X पॉइंट्स है
-- You are currently in X tier with Y points → आप X टियर में हैं और आपके पास Y पॉइंट्स हैं
+- Your current reward balance is X points. You are currently in the Bronze tier. You need Y more points to reach the Silver tier. → आपका वर्तमान रिवॉर्ड बैलेंस X पॉइंट्स है। आप ब्रॉन्ज (Bronze) टियर में हैं। सिल्वर (Silver) टियर तक पहुँचने के लिए आपको Y और पॉइंट्स चाहिए।
+- Your current reward balance is X points. You are currently in the Silver tier. You need Y more points to reach the Gold tier. → आपका वर्तमान रिवॉर्ड बैलेंस X points है। आप सिल्वर (Silver) टियर में हैं। गोल्ड (Gold) टियर तक पहुँचने के लिए आपको Y और पॉइंट्स चाहिए।
+- Your current reward balance is X points. You are currently in the Gold tier. You need Y more points to reach the Platinum tier. → आपका वर्तमान रिवॉर्ड बैलेंस X points है। आप गोल्ड (Gold) टियर में हैं। प्लेटिनम (Platinum) टियर तक पहुँचने के लिए आपको Y और पॉइंट्स चाहिए।
+- Your current reward balance is X points. You are currently in the Platinum tier (the highest tier). → आपका वर्तमान रिवॉर्ड बैलेंस X पॉइंट्स है। आप प्लेटिनम (Platinum) टियर में हैं (सर्वोच्च टियर)।
 - No recent points history found → कोई हालिया लेनदेन नहीं मिला
 
 दो रास्ते हैं rewards तक:

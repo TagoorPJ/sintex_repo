@@ -457,10 +457,17 @@ IMPORTANT CONTEXT:
                         f"[TOOL RESULT] tool={trace['tool_name']} | output={trace['output']}"
                     )
 
+        token_usage = final_state.get("token_usage", {}) or {}
+
         return {
             "response": response_text,
             "tool_traces": tool_traces,
             "is_complete": is_complete,
+            "token_usage": {
+                "prompt": token_usage.get("prompt", 0),
+                "completion": token_usage.get("completion", 0),
+                "total": token_usage.get("total", 0),
+            },
         }
 
 

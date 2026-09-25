@@ -2,6 +2,7 @@
 
 Run: env/Scripts/python.exe -m unittest test_feature_usage -v
 """
+import argparse
 import importlib
 import json
 import logging
@@ -59,6 +60,103 @@ class FeatureUsageTests(unittest.IsolatedAsyncioTestCase):
     def setUp(self):
         logging.disable(logging.CRITICAL)
         self.addCleanup(logging.disable, logging.NOTSET)
+
+    def test_single_date_and_inclusive_date_range_windows(self):
+        single = argparse.Namespace(
+            date="2026-09-08",
+            from_date=None,
+            to_date=None,
+            yesterday=False,
+            days=None,
+            timezone="Asia/Kolkata",
+        )
+        single_window = reporting.build_window(single)
+        self.assertEqual(single_window.start_day, date(2026, 9, 8))
+        self.assertEqual(single_window.end_day, date(2026, 9, 8))
+
+        date_range = argparse.Namespace(
+            date=None,
+            from_date="2026-09-01",
+            to_date="2026-09-08",
+            yesterday=False,
+            days=None,
+            timezone="Asia/Kolkata",
+        )
+        range_window = reporting.build_window(date_range)
+        self.assertEqual(range_window.start_day, date(2026, 9, 1))
+        self.assertEqual(range_window.end_day, date(2026, 9, 8))
+        self.assertEqual(reporting.day_range(range_window)[-1], date(2026, 9, 8))
+
+    def test_invalid_or_conflicting_date_ranges_are_rejected(self):
+        base = {
+            "date": None,
+            "from_date": None,
+            "to_date": None,
+            "yesterday": False,
+            "days": None,
+            "timezone": "Asia/Kolkata",
+        }
+        invalid_cases = [
+            {**base, "from_date": "2026-09-01"},
+            {
+                **base,
+                "from_date": "2026-09-08",
+                "to_date": "2026-09-01",
+            },
+            {
+                **base,
+                "date": "2026-09-08",
+                "from_date": "2026-09-01",
+                "to_date": "2026-09-08",
+            },
+            {
+                **base,
+                "from_date": "2026-09-01",
+                "to_date": "2026-09-08",
+                "days": 3,
+            },
+        ]
+        for values in invalid_cases:
+            with self.subTest(values=values), self.assertRaises(ValueError):
+                reporting.build_window(argparse.Namespace(**values))
+
+    def test_range_top_summary_counts_users_once_across_period(self):
+        window = reporting.DateWindow(
+            date(2026, 9, 1),
+            date(2026, 9, 2),
+            "UTC",
+            datetime(2026, 9, 1, tzinfo=timezone.utc),
+            datetime(2026, 9, 3, tzinfo=timezone.utc),
+        )
+        data = {
+            "daily_rows": [
+                {
+                    "day": date(2026, 9, 1),
+                    "unique_users": 1,
+                    "user_messages": 2,
+                    "assistant_messages": 2,
+                },
+                {
+                    "day": date(2026, 9, 2),
+                    "unique_users": 1,
+                    "user_messages": 3,
+                    "assistant_messages": 3,
+                },
+            ],
+            "new_user_rows": [],
+            "mobile_message_rows": [
+                {"mobile_number": "919182619119", "total_messages": 5}
+            ],
+            "api_rows": [],
+            "feature_usage_rows": [],
+            "mobile_feature_usage_rows": [],
+        }
+
+        totals = reporting.build_top_kpi_totals(data, window)
+
+        self.assertEqual(totals["unique_users"], 1)
+        self.assertEqual(totals["user_messages"], 5)
+        self.assertEqual(totals["assistant_messages"], 5)
 
     async def test_menu_selections_never_record_and_results_are_labelled(self):
         db = AsyncMock()
@@ -247,7 +345,7 @@ class FeatureUsageTests(unittest.IsolatedAsyncioTestCase):
             self.assertFalse(record.call_args.kwargs["success"])
             self.assertEqual(record.call_args.kwargs["context"]["message_id"], 10)
 
-    async def test_report_includes_attempt_success_and_failure_counts(self):
+    async def test_report_counts_successful_and_failed_attempts_as_usage(self):
         conn = AsyncMock()
         engine = MagicMock()
         engine.connect.return_value.__aenter__ = AsyncMock(return_value=conn)
@@ -278,8 +376,9 @@ class FeatureUsageTests(unittest.IsolatedAsyncioTestCase):
             self.assertEqual(len(feature_calls), 2)
             for call in feature_calls:
                 self.assertIn("detection_method = ANY(:result_methods)", call.args[1])
-                self.assertIn("AS success_count", call.args[1])
-                self.assertIn("AS failure_count", call.args[1])
+                self.assertIn("COUNT(*) AS usage_count", call.args[1])
+                self.assertNotIn("AS success_count", call.args[1])
+                self.assertNotIn("AS failure_count", call.args[1])
                 self.assertEqual(
                     set(call.args[2]["result_methods"]),
                     {"completed_action", "failed_action"},
@@ -304,8 +403,6 @@ class FeatureUsageTests(unittest.IsolatedAsyncioTestCase):
                 "mobile_number": "test",
                 "event_name": "Upload Purchase: Claim Created",
                 "usage_count": 2,
-                "success_count": 1,
-                "failure_count": 1,
             }
         ]
         data["feature_usage_rows"] = [
@@ -315,27 +412,69 @@ class FeatureUsageTests(unittest.IsolatedAsyncioTestCase):
                 "flow_name": "Upload Purchase",
                 "unique_users": 1,
                 "usage_count": 2,
-                "success_count": 1,
-                "failure_count": 1,
             }
         ]
         headers, rows = reporting.build_mobile_feature_usage_sheet(data)
-        self.assertIn("Upload Purchase: Claim Created - Attempts", headers)
-        self.assertIn("Upload Purchase: Claim Created - Failed", headers)
-        claim_index = headers.index("Upload Purchase: Claim Created - Attempts")
-        self.assertEqual(rows[0][claim_index : claim_index + 3], [2, 1, 1])
+        self.assertIn("Upload Purchase: Claim Created", headers)
+        self.assertNotIn("Upload Purchase: Claim Created - Attempts", headers)
+        claim_index = headers.index("Upload Purchase: Claim Created")
+        self.assertEqual(rows[0][claim_index], 2)
 
         from openpyxl import load_workbook
 
-        _, content = reporting.build_excel_report(data, window)
+        _, content = reporting.build_excel_report(data, window, {
+            "activity_rows": [], "new_user_rows": [],
+            "conversation_rows": [], "engagement": {}, "mobile_user_rows": [],
+        })
         workbook = load_workbook(BytesIO(content))
-        self.assertEqual(workbook.sheetnames, ["Mobile Feature Usage", "Report Summary"])
+        self.assertEqual(
+            workbook.sheetnames,
+            ["Mobile Feature Usage", "Report Summary", "YTD KPI Report"],
+        )
+        summary_tables = reporting.build_report_summary_tables(data, window)
+        summary_titles = [title for title, _, _ in summary_tables]
+        self.assertEqual(
+            summary_titles,
+            [
+                "Top KPI Summary",
+                "Feature Usage",
+                "Flow Completion KPIs",
+                "Evolve API Health",
+            ],
+        )
+        self.assertNotIn("KPI Names", summary_titles)
+        self.assertNotIn("Daily KPI Summary", summary_titles)
+        self.assertNotIn("Flow Details Summary", summary_titles)
+        top_summary = summary_tables[0][2]
+        self.assertEqual(
+            [row[0] for row in top_summary],
+            [
+                "Total Unique Users",
+                "New Users Came",
+                "Total User Messages",
+                "Total Agent Messages",
+            ],
+        )
         html = reporting.build_report_html(data, window)
-        self.assertIn("Successful", html)
-        self.assertIn("Failed", html)
+        self.assertIn("Top KPI Summary", html)
+        self.assertIn("Total Unique Users", html)
+        self.assertIn("Total Agent Messages", html)
+        self.assertNotIn("Feature Usage", html)
+        self.assertNotIn("Flow Completion KPIs", html)
+        self.assertNotIn("Evolve API Health", html)
+        self.assertNotIn("KPI Names", html)
+        self.assertNotIn("Daily KPI Summary", html)
+        self.assertNotIn("Flow Details Summary", html)
         text_report = reporting.build_report_text(data, window)
-        self.assertIn("attempts=2", text_report)
-        self.assertIn("failed=1", text_report)
+        self.assertIn("Top KPI Summary", text_report)
+        self.assertIn("Total Unique Users", text_report)
+        self.assertIn("Total Agent Messages", text_report)
+        self.assertNotIn("Feature Usage", text_report)
+        self.assertNotIn("Flow Completion KPIs", text_report)
+        self.assertNotIn("Evolve API Health", text_report)
+        self.assertNotIn("KPI Names", text_report)
+        self.assertNotIn("Daily KPI Summary", text_report)
+        self.assertNotIn("Flow Details Summary", text_report)
 
 
 if __name__ == "__main__":

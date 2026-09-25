@@ -208,6 +208,9 @@ async def save_message(
     user_id: int,
     sender: str,
     message: str,
+    prompt_tokens: int = 0,
+    completion_tokens: int = 0,
+    total_tokens: int = 0,
 ) -> Message:
 
     msg = Message(
@@ -215,6 +218,9 @@ async def save_message(
         user_id=user_id,
         sender=sender,
         message=message,
+        prompt_tokens=prompt_tokens,
+        completion_tokens=completion_tokens,
+        total_tokens=total_tokens,
     )
 
     db.add(msg)

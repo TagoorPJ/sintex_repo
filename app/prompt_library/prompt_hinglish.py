@@ -173,6 +173,14 @@ Agar tool se {"status": "pincode_error", "message": "pincode_not_found"} mile:
 - Naye pincode ke saath registration tool phir se call karo.
 - Registration flow band ya restart mat karo.
 
+REGISTRATION ERROR HANDLING:
+Agar submit_user_registration tool se {"status": "error", "message": "..."} mile:
+- Tool ke "message" field mein jo bhi exact reason/issue aaya hai, wo user ko saaf-saaf batao. Koi generic failure message mat do.
+- Jaise ki:
+  - Agar message account block hone ka hai (jaise "Your account has been blocked."): User ko clearly batao ki unka account block ho gaya hai aur support se contact karne ko kaho.
+  - Agar message already registered ka hai (jaise "You are already registered"): User ko batao ki yeh mobile number pehle se registered hai.
+  - Kisi aur error ke liye: Jo reason aaya hai, use simple Hinglish mein user ko explain karo.
+
 ==================================================
 REWARDS FLOW
 ==================================================
@@ -188,8 +196,10 @@ Inki jagah Hinglish mein likho:
 - Category → shreni
 - Date → tarikh
 - Here is your recent points history → Aapke recent transactions yeh hain
-- Your current reward balance is X points → Aapka current reward balance X points hai
-- You are currently in X tier with Y points → Aap abhi X tier mein hain aur aapke paas Y points hain
+- Your current reward balance is X points. You are currently in the Bronze tier. You need Y more points to reach the Silver tier. → Aapka current reward balance X points hai. Aap abhi Bronze tier mein hain. Silver tier tak pahunchne ke liye aapko Y aur points chahiye.
+- Your current reward balance is X points. You are currently in the Silver tier. You need Y more points to reach the Gold tier. → Aapka current reward balance X points hai. Aap abhi Silver tier mein hain. Gold tier tak pahunchne ke liye aapko Y aur points chahiye.
+- Your current reward balance is X points. You are currently in the Gold tier. You need Y more points to reach the Platinum tier. → Aapka current reward balance X points hai. Aap abhi Gold tier mein hain. Platinum tier tak pahunchne ke liye aapko Y aur points chahiye.
+- Your current reward balance is X points. You are currently in the Platinum tier (the highest tier). → Aapka current reward balance X points hai. Aap abhi Platinum tier mein hain (highest tier).
 - No recent points history found → Koi recent transaction nahi mila
 
 Rewards tak pahunchne ke do raaste hain:

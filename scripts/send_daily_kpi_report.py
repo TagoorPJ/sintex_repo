@@ -326,6 +326,21 @@ def build_ytd_window(window: DateWindow) -> DateWindow:
     )
 
 
+def build_monthly_window(window: DateWindow) -> DateWindow:
+    """Month to date, from 1st of the report month to end_day."""
+    start_day = window.end_day.replace(day=1)
+    local_start = datetime.combine(
+        start_day, time.min, tzinfo=resolve_timezone(window.timezone_name)
+    )
+    return DateWindow(
+        start_day=start_day,
+        end_day=window.end_day,
+        timezone_name=window.timezone_name,
+        start_utc=local_start.astimezone(timezone.utc),
+        end_utc=window.end_utc,
+    )
+
+
 def day_range(window: DateWindow) -> list[date]:
     days = []
     current = window.start_day
@@ -656,6 +671,84 @@ async def load_ytd_report_data(database_url: str, window: DateWindow) -> dict[st
         "mobile_user_rows": mobile_user_rows,
     }
 
+
+# -- Monthly Feature Usage (month-to-date) ------------------------------------
+
+# Column definitions for the monthly sheet.
+# Each entry: (header_label, list_of_event_keys_to_sum)
+MONTHLY_SHEET_COLUMNS: list[tuple[str, list[str]]] = [
+    ("Rewards Balance Check & Tier Update", ["rewards.balance", "rewards.tier"]),
+    ("Upload Purchase : QR Flow Completed", ["upload.scan_qr"]),
+    ("Upload Purchase: Claim Created", ["upload.create_claim"]),
+    ("Upload Purchase: Claim Status", ["upload.claim_status"]),
+    ("Rewards: Transaction History", ["rewards.transactions"]),
+    ("Rewards: Reward Statement", ["rewards.statement"]),
+]
+
+MONTHLY_FEATURE_KEYS = sorted(
+    {key for _, keys in MONTHLY_SHEET_COLUMNS for key in keys}
+)
+
+
+async def load_monthly_feature_data(
+    database_url: str, window: DateWindow
+) -> list[dict[str, Any]]:
+    """Load per-mobile feature usage counts for the monthly window."""
+    engine = create_async_engine(database_url, pool_pre_ping=True)
+    try:
+        async with engine.connect() as conn:
+            if not await table_exists(conn, "chatbot_feature_usage_events"):
+                return []
+            return await fetch_all(
+                conn,
+                """
+                SELECT
+                    mobile_number,
+                    event_key,
+                    COUNT(*) AS usage_count
+                FROM chatbot_feature_usage_events
+                WHERE detection_method = ANY(:result_methods)
+                  AND event_key = ANY(:feature_keys)
+                  AND event_date >= :start_day
+                  AND event_date <= :end_day
+                GROUP BY mobile_number, event_key
+                ORDER BY mobile_number, event_key
+                """,
+                {
+                    "result_methods": list(FEATURE_RESULT_METHODS),
+                    "feature_keys": MONTHLY_FEATURE_KEYS,
+                    "start_day": window.start_day,
+                    "end_day": window.end_day,
+                },
+            )
+    finally:
+        await engine.dispose()
+
+
+def build_monthly_feature_usage_sheet(
+    monthly_rows: list[dict[str, Any]],
+) -> tuple[list[str], list[list[Any]]]:
+    """Pivot monthly feature data into the 7-column sheet layout."""
+    # Accumulate counts: {mobile: {event_key: count}}
+    mobile_counts: dict[str, dict[str, int]] = {}
+    for row in monthly_rows:
+        mobile = str(row.get("mobile_number") or "").strip() or "(unknown)"
+        event_key = str(row.get("event_key") or "")
+        count = int(row.get("usage_count") or 0)
+        mobile_counts.setdefault(mobile, {})[event_key] = (
+            mobile_counts.get(mobile, {}).get(event_key, 0) + count
+        )
+
+    headers = ["Contractor Mob No"] + [label for label, _ in MONTHLY_SHEET_COLUMNS]
+    rows: list[list[Any]] = []
+    for mobile in sorted(mobile_counts):
+        counts = mobile_counts[mobile]
+        row: list[Any] = [mobile]
+        for _, event_keys in MONTHLY_SHEET_COLUMNS:
+            row.append(sum(counts.get(k, 0) for k in event_keys))
+        rows.append(row)
+
+    return headers, rows
 
 def build_ytd_summary_tables(
     report: dict[str, Any], window: DateWindow
@@ -1063,7 +1156,8 @@ def _append_excel_table(ws, title: str, headers: list[str], rows: list[list[Any]
 
 
 def build_excel_report(
-    report: dict[str, Any], window: DateWindow, ytd_report: dict[str, Any]
+    report: dict[str, Any], window: DateWindow, ytd_report: dict[str, Any],
+    monthly_feature_rows: list[dict[str, Any]] | None = None,
 ) -> tuple[str, bytes]:
     try:
         from openpyxl import Workbook
@@ -1145,6 +1239,36 @@ def build_excel_report(
     ws_ytd.column_dimensions["C"].width = 80
     ws_ytd.merge_cells("A1:B1")
     ws_ytd.row_dimensions[1].height = 30
+
+    # -- Monthly Feature Usage sheet (month-to-date) --------------------------
+    monthly_window = build_monthly_window(window)
+    monthly_period = (
+        f"{monthly_window.start_day.isoformat()} to "
+        f"{monthly_window.end_day.isoformat()}"
+    )
+    mtd_headers, mtd_rows = build_monthly_feature_usage_sheet(
+        monthly_feature_rows or []
+    )
+    ws_mtd = workbook.create_sheet("Monthly Feature Usage")
+    ws_mtd.cell(
+        row=1, column=1,
+        value="Monthly Feature Usage (Month-to-Date)",
+    )
+    ws_mtd.cell(row=2, column=1, value=f"Period: {monthly_period}")
+    ws_mtd.cell(row=3, column=1, value=f"Timezone: {window.timezone_name}")
+    ws_mtd["A1"].font = Font(bold=True, size=14)
+    ws_mtd["A2"].font = Font(color="4B5563")
+    ws_mtd["A3"].font = Font(color="4B5563")
+    header_row = _append_excel_table(
+        ws_mtd, "Monthly Feature Usage", mtd_headers, mtd_rows, 5
+    )
+    # Format mobile numbers as text so Excel doesn't mangle them
+    for row_number in range(7, 7 + len(mtd_rows)):
+        mobile_cell = ws_mtd.cell(row=row_number, column=1)
+        mobile_cell.data_type = "s"
+        mobile_cell.number_format = "@"
+    ws_mtd.freeze_panes = "B7"
+    _set_column_widths(ws_mtd)
 
     for ws in workbook.worksheets:
         for row in ws.iter_rows():
@@ -1336,7 +1460,21 @@ async def async_main() -> None:
         ytd_window.end_day,
     )
     ytd_report = await load_ytd_report_data(database_url, ytd_window)
-    excel_filename, excel_bytes = build_excel_report(report, window, ytd_report)
+    monthly_window = build_monthly_window(window)
+    logger.info(
+        "Loading monthly feature data | start_day=%s | end_day=%s",
+        monthly_window.start_day,
+        monthly_window.end_day,
+    )
+    monthly_feature_rows = await load_monthly_feature_data(
+        database_url, monthly_window
+    )
+    logger.info(
+        "Monthly feature data loaded | rows=%s", len(monthly_feature_rows)
+    )
+    excel_filename, excel_bytes = build_excel_report(
+        report, window, ytd_report, monthly_feature_rows
+    )
     logger.info(
         "Excel report generated | filename=%s | size_bytes=%s",
         excel_filename,
