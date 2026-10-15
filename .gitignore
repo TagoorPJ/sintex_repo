@@ -11,3 +11,14 @@ __pycache__/
 .mypy_cache/
 .ruff_cache/
 .cache/
+
+# Excel files and temporary lock files
+*.xlsx
+*.xls
+~$*.xlsx
+~$*.xls
+
+# Export files in scripts folder
+scripts/export_*
+scripts/export_user_activity_last_month.py
+
