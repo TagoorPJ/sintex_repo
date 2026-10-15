@@ -693,7 +693,7 @@ MONTHLY_FEATURE_KEYS = sorted(
 async def load_monthly_feature_data(
     database_url: str, window: DateWindow
 ) -> list[dict[str, Any]]:
-    """Load per-mobile feature usage counts for the monthly window."""
+    """Load per-mobile, per-day feature usage counts for the monthly window."""
     engine = create_async_engine(database_url, pool_pre_ping=True)
     try:
         async with engine.connect() as conn:
@@ -703,6 +703,7 @@ async def load_monthly_feature_data(
                 conn,
                 """
                 SELECT
+                    event_date,
                     mobile_number,
                     event_key,
                     COUNT(*) AS usage_count
@@ -711,8 +712,8 @@ async def load_monthly_feature_data(
                   AND event_key = ANY(:feature_keys)
                   AND event_date >= :start_day
                   AND event_date <= :end_day
-                GROUP BY mobile_number, event_key
-                ORDER BY mobile_number, event_key
+                GROUP BY event_date, mobile_number, event_key
+                ORDER BY event_date, mobile_number, event_key
                 """,
                 {
                     "result_methods": list(FEATURE_RESULT_METHODS),
@@ -728,22 +729,44 @@ async def load_monthly_feature_data(
 def build_monthly_feature_usage_sheet(
     monthly_rows: list[dict[str, Any]],
 ) -> tuple[list[str], list[list[Any]]]:
-    """Pivot monthly feature data into the 7-column sheet layout."""
-    # Accumulate counts: {mobile: {event_key: count}}
-    mobile_counts: dict[str, dict[str, int]] = {}
+    """Pivot monthly feature data into Month, Date, Contractor Mob No and feature columns."""
+    # Accumulate counts: {(event_date, mobile): {event_key: count}}
+    date_mobile_counts: dict[tuple[date, str], dict[str, int]] = {}
     for row in monthly_rows:
+        raw_date = row.get("event_date")
+        if isinstance(raw_date, str):
+            try:
+                event_date = date.fromisoformat(raw_date)
+            except ValueError:
+                event_date = date.today()
+        elif isinstance(raw_date, date):
+            event_date = raw_date
+        elif isinstance(raw_date, datetime):
+            event_date = raw_date.date()
+        else:
+            event_date = date.today()
+
         mobile = str(row.get("mobile_number") or "").strip() or "(unknown)"
         event_key = str(row.get("event_key") or "")
         count = int(row.get("usage_count") or 0)
-        mobile_counts.setdefault(mobile, {})[event_key] = (
-            mobile_counts.get(mobile, {}).get(event_key, 0) + count
+
+        key = (event_date, mobile)
+        date_mobile_counts.setdefault(key, {})[event_key] = (
+            date_mobile_counts.get(key, {}).get(event_key, 0) + count
         )
 
-    headers = ["Contractor Mob No"] + [label for label, _ in MONTHLY_SHEET_COLUMNS]
+    headers = [
+        "Month",
+        "Date",
+        "Contractor Mob No",
+        *[label for label, _ in MONTHLY_SHEET_COLUMNS],
+    ]
     rows: list[list[Any]] = []
-    for mobile in sorted(mobile_counts):
-        counts = mobile_counts[mobile]
-        row: list[Any] = [mobile]
+    for event_date, mobile in sorted(date_mobile_counts.keys(), key=lambda x: (x[0], x[1])):
+        counts = date_mobile_counts[(event_date, mobile)]
+        month_str = event_date.strftime("%b-%y")      # e.g. Sep-26, Oct-26
+        date_str = event_date.strftime("%d-%m-%Y")    # e.g. 25-09-2026, 01-10-2026
+        row: list[Any] = [month_str, date_str, mobile]
         for _, event_keys in MONTHLY_SHEET_COLUMNS:
             row.append(sum(counts.get(k, 0) for k in event_keys))
         rows.append(row)
@@ -1262,12 +1285,16 @@ def build_excel_report(
     header_row = _append_excel_table(
         ws_mtd, "Monthly Feature Usage", mtd_headers, mtd_rows, 5
     )
-    # Format mobile numbers as text so Excel doesn't mangle them
+    # Format Month, Date, and Mobile cells so Excel handles them properly
     for row_number in range(7, 7 + len(mtd_rows)):
-        mobile_cell = ws_mtd.cell(row=row_number, column=1)
+        ws_mtd.cell(row=row_number, column=1).data_type = "s"
+        ws_mtd.cell(row=row_number, column=2).data_type = "s"
+        mobile_cell = ws_mtd.cell(row=row_number, column=3)
         mobile_cell.data_type = "s"
         mobile_cell.number_format = "@"
-    ws_mtd.freeze_panes = "B7"
+        for col_idx in range(4, 4 + len(MONTHLY_SHEET_COLUMNS)):
+            ws_mtd.cell(row=row_number, column=col_idx).number_format = "#,##0"
+    ws_mtd.freeze_panes = "D7"
     _set_column_widths(ws_mtd)
 
     for ws in workbook.worksheets:

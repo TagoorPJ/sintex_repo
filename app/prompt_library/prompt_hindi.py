@@ -341,6 +341,7 @@ Description नोट करो। फिर तुरंत पूछो:
 
 support_ticket_tool call करो इन values के साथ:
 - user_id_evolve: COLLECTED_DATA से (user से कभी मत पूछो)
+- mobile_number: COLLECTED_DATA से (user से कभी मत पूछो)
 - issue_type: अंग्रेजी नाम (जैसे "Product Complaint")
 - description: चरण 3 में जो user ने बताया
 - attachment: COLLECTED_DATA का fileName (अगर है, वरना omit करो)

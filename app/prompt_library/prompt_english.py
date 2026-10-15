@@ -334,6 +334,7 @@ Either way, call the tool NOW. Do not ask any more questions.
 
 CALL support_ticket_tool with:
 - user_id_evolve: from COLLECTED_DATA (never ask the user)
+- mobile_number: from COLLECTED_DATA (never ask the user)
 - issue_type: full English name (e.g. "Product Complaint")
 - description: what user described in STEP 3
 - attachment: value from COLLECTED_DATA["attachment"] if present, omit otherwise

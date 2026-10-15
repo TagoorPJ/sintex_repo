@@ -44,6 +44,13 @@ async def get_user_by_mobile(db: AsyncSession, mobile_number: str) -> Optional[U
     return result.scalar_one_or_none()
 
 
+async def get_user_by_evolve_id(db: AsyncSession, user_id_evolve: str) -> Optional[User]:
+    result = await db.execute(
+        select(User).where(User.user_id_evolve == str(user_id_evolve))
+    )
+    return result.scalar_one_or_none()
+
+
 async def upsert_user(
     db: AsyncSession,
     mobile_number: str,

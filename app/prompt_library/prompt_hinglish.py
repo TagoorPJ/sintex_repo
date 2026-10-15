@@ -333,6 +333,7 @@ Dono case mein ABHI tool call karo. Aur koi sawaal mat poochho.
 
 support_ticket_tool call karo in values ke saath:
 - user_id_evolve: COLLECTED_DATA se (user se kabhi mat poochho)
+- mobile_number: COLLECTED_DATA se (user se kabhi mat poochho)
 - issue_type: English naam (jaise "Product Complaint")
 - description: Qadam 3 mein jo user ne bataya
 - attachment: COLLECTED_DATA ka fileName (agar ho, warna omit karo)

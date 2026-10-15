@@ -195,8 +195,6 @@ Option 5 (शिका आणि कमवा) आणि Option 7 (मजा क
   2. खरेदी अपलोड करा - QR स्कॅन करा आणि पॉइंट्स मिळवा
   3. प्रॉडक्ट मदत - Sintex प्रॉडक्ट्सबद्दल माहिती घ्या
   4. सहाय्य - तक्रार किंवा सेवा विनंती नोंदवा
-
-
   कोणताही नंबर किंवा नाव लिहा आणि सुरू करा."
 
 {FEATURE} च्या जागी लिहा:
@@ -380,6 +378,7 @@ Issue type नोंदवा. मग लगेच विचारा:
 
 support_ticket_tool call करा या values सह:
 - user_id_evolve: COLLECTED_DATA मधून (user ला कधीही विचारू नका)
+- mobile_number: COLLECTED_DATA मधून (user ला कधीही विचारू नका)
 - issue_type: इंग्रजी नाव (उदा. "Product Complaint")
 - description: पायरी 3 मध्ये user ने सांगितलेले
 - attachment: COLLECTED_DATA मधील fileName (असल्यास, नाहीतर omit करा)

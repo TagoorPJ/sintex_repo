@@ -129,7 +129,7 @@ class YtdKpiReportTests(unittest.IsolatedAsyncioTestCase):
         filename, content = reporting.build_excel_report(daily, selected, ytd)
         workbook = load_workbook(BytesIO(content))
         self.assertEqual(workbook.sheetnames,
-                         ["Mobile Feature Usage", "Report Summary", "YTD KPI Report"])
+                         ["Mobile Feature Usage", "Report Summary", "YTD KPI Report", "Monthly Feature Usage"])
         self.assertIn("2026-09-10", filename)
         ws = workbook["YTD KPI Report"]
         self.assertEqual(ws["C1"].value, "Period: 2026-01-01 to 2026-09-10")
@@ -204,6 +204,22 @@ class YtdKpiReportTests(unittest.IsolatedAsyncioTestCase):
         ytd_window = reporting.build_ytd_window(window("2024-02-29", "2024-02-29"))
         mobile_table = reporting.build_ytd_summary_tables(data, ytd_window)[2]
         self.assertEqual(mobile_table[2][0][4:], [1, 0, 1, 1, 1, 1.0, 1])
+
+    def test_monthly_feature_usage_sheet_format(self):
+        monthly_data = [
+            {"event_date": date(2026, 9, 25), "mobile_number": "916395691735", "event_key": "rewards.balance", "usage_count": 2},
+            {"event_date": date(2026, 9, 25), "mobile_number": "916395691735", "event_key": "rewards.tier", "usage_count": 1},
+            {"event_date": date(2026, 10, 1), "mobile_number": "919876543210", "event_key": "upload.scan_qr", "usage_count": 3},
+        ]
+        headers, rows = reporting.build_monthly_feature_usage_sheet(monthly_data)
+        self.assertEqual(headers[:3], ["Month", "Date", "Contractor Mob No"])
+        self.assertEqual(len(rows), 2)
+        # Row 1: Sep-26, 25-09-2026, 916395691735, rewards.balance + rewards.tier = 3, ...
+        self.assertEqual(rows[0][:3], ["Sep-26", "25-09-2026", "916395691735"])
+        self.assertEqual(rows[0][3], 3)
+        # Row 2: Oct-26, 01-10-2026, 919876543210
+        self.assertEqual(rows[1][:3], ["Oct-26", "01-10-2026", "919876543210"])
+        self.assertEqual(rows[1][4], 3)
 
     async def test_main_loads_ytd_data_for_excel_without_sending_in_dry_run(self):
         args = argparse.Namespace(

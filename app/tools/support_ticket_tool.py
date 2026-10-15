@@ -33,7 +33,13 @@ SMTP_HOST = os.getenv("SMTP_HOST", "smtp.office365.com")
 SMTP_PORT = int(os.getenv("SMTP_PORT", "587"))
 SMTP_USER = os.getenv("SMTP_USER", "")
 SMTP_PASS = os.getenv("SMTP_PASS", "")
-EMAIL_RECIPIENTS = [e.strip() for e in os.getenv("EMAIL_RECIPIENTS", "").split(",") if e.strip()]
+
+EMAIL_TO = [e.strip() for e in os.getenv("EMAIL_TO","").split(",") if e.strip()]
+
+# Remaining recipients from EMAIL_RECIPIENTS or EMAIL_BCC go into BCC (excluding any addresses already in To)
+_raw_bcc = os.getenv("EMAIL_BCC", "")
+_to_set = {e.lower() for e in EMAIL_TO}
+EMAIL_BCC = [e.strip() for e in _raw_bcc.split(",") if e.strip() and e.strip().lower() not in _to_set]
 
 # ── Image storage ─────────────────────────────────────────────────
 IMAGE_SAVE_DIR = Path(os.getenv("IMAGE_SAVE_DIR", "/tmp/sintex_images"))
@@ -115,17 +121,21 @@ def _send_ticket_email(
     ticket_id: str,
     issue_type: str,
     description: str,
-    user_id: int,
+    user_id: int | str,
     image_path: str | None,
     image_url: str | None,
+    mobile_number: str | None = None,
 ) -> None:
     """Send support ticket details via SMTP. Runs synchronously — call in a thread if needed."""
     msg = EmailMessage()
     msg["Subject"] = f"Sintex Support Ticket #{ticket_id} — {issue_type}"
     msg["From"] = SMTP_USER
-    msg["To"] = ", ".join(EMAIL_RECIPIENTS)
+    msg["To"] = ", ".join(EMAIL_TO)
+    if EMAIL_BCC:
+        msg["Bcc"] = ", ".join(EMAIL_BCC)
 
     image_note_text = "Image     : See attached." if image_path else "Image     : No image attached."
+    mobile_display = str(mobile_number).strip() if mobile_number else "N/A"
 
     # Plain-text fallback
     msg.set_content(
@@ -134,6 +144,7 @@ def _send_ticket_email(
         f"Ticket ID  : {ticket_id}\n"
         f"Issue Type : {issue_type}\n"
         f"User ID    : {user_id}\n"
+        f"Mobile No  : {mobile_display}\n"
         f"{'─' * 35}\n"
         f"Description:\n{description}\n"
         f"{'─' * 35}\n"
@@ -175,6 +186,10 @@ def _send_ticket_email(
               <tr>
                 <td style="padding:6px 0;color:#555;font-size:13px;">User ID</td>
                 <td style="padding:6px 0;font-size:13px;">{user_id}</td>
+              </tr>
+              <tr style="background:#f9f9f9;">
+                <td style="padding:6px 0;color:#555;font-size:13px;">Mobile Number</td>
+                <td style="padding:6px 0;font-size:13px;">{mobile_display}</td>
               </tr>
             </table>
 
@@ -230,7 +245,7 @@ def _send_ticket_email(
             smtp.starttls()
             smtp.login(SMTP_USER, SMTP_PASS)
             smtp.send_message(msg)
-        logger.info(f"[SUPPORT TICKET] Email sent for ticket {ticket_id}")
+        logger.info(f"[SUPPORT TICKET] Email sent for ticket {ticket_id} to To={EMAIL_TO} Bcc={EMAIL_BCC}")
     except Exception:
         logger.exception(f"[SUPPORT TICKET] Email send failed for ticket {ticket_id}")
 
@@ -267,6 +282,7 @@ async def support_ticket_tool(payload: str) -> str:
 
     Parameters (JSON string):
     - user_id_evolve (Required): from COLLECTED_DATA, never ask user
+    - mobile_number (Optional): user's mobile number from COLLECTED_DATA, never ask user
     - issue_type (Required): one of "Product Complaint", "Loyalty Issue", "Dealer Problem", "Service Request"
     - description (Required): user's issue description
     - attachment (Optional): WATI fileName string from the incoming WhatsApp message (if user sent an image)
@@ -306,6 +322,27 @@ async def support_ticket_tool(payload: str) -> str:
     # Sanitize WATI no-attachment sentinels ("NA", "null", "none", etc.)
     _raw_attachment = (data.get("attachment") or "").strip()
     attachment = None if _raw_attachment.lower() in {"", "na", "null", "none", "undefined", "false", "nil"} else _raw_attachment
+
+    raw_mobile = (
+        data.get("mobile_number")
+        or data.get("whatsapp_number")
+        or data.get("mobile")
+        or data.get("phone")
+        or ""
+    )
+    mobile_number = str(raw_mobile).strip()
+
+    # If mobile_number is not in payload, query database by user_id_evolve as fallback
+    if not mobile_number and user_id_evolve:
+        try:
+            from app.database import AsyncSessionLocal
+            from app.crud import get_user_by_evolve_id
+            async with AsyncSessionLocal() as session:
+                user_obj = await get_user_by_evolve_id(session, str(user_id_evolve))
+                if user_obj and user_obj.mobile_number:
+                    mobile_number = str(user_obj.mobile_number).strip()
+        except Exception:
+            logger.warning(f"[support_ticket_tool] Could not lookup mobile number from DB for user {user_id_evolve}")
 
     # ── Validate required fields ─────────────────────────────────
     if not user_id_evolve:
@@ -394,6 +431,7 @@ async def support_ticket_tool(payload: str) -> str:
                 user_id_int,
                 saved_image_path,
                 image_public_url,
+                mobile_number,
             )
         except Exception:
             logger.exception("[support_ticket_tool] Email notification failed (non-fatal)")
