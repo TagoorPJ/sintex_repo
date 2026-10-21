@@ -1,33 +1,78 @@
 from __future__ import annotations
 
+import asyncio
 import os
+import shutil
 from contextlib import asynccontextmanager
+from pathlib import Path
 
 from dotenv import load_dotenv
-from fastapi import FastAPI, Request
+from fastapi import Depends, FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
+from greeting_renderer.fonts import FONTS_DIR, manifest
+from PIL import features
+
 from app.api.routes.chat import router as chat_router
-from app.database import Base, engine
-from app.utils.logger import get_logger
 from app.api.routes.qr_capture import router as qr_router
+from app.database import AsyncSessionLocal, Base, engine
+from app.greetings import storage
+from app.greetings.config import greeting_settings
+from app.greetings.routers import (
+    assets_router,
+    cards_router,
+    festivals_router,
+    greetings_router,
+    templates_router,
+)
+from app.greetings.security import require_admin
+from app.greetings.service import seed_festivals
+from app.utils.logger import get_logger
+
 load_dotenv()
 logger = get_logger(__name__)
+
+
+# ─── Periodic Sweeper ─────────────────────────────────────────────────────────
+
+async def _sweep_cards_forever() -> None:
+    """Periodically sweep uncollected one-time greeting cards past TTL."""
+    while True:
+        try:
+            storage.sweep_cards(greeting_settings.render_ttl_seconds)
+        except Exception as exc:
+            logger.warning(f"Error in card outbox sweeper: {exc}")
+        await asyncio.sleep(60)
 
 
 # ─── Lifespan ─────────────────────────────────────────────────────────────────
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    """Startup / shutdown lifecycle."""
-    logger.info("Starting up — creating DB tables if not exist")
+    """Startup / shutdown lifecycle for unified application."""
+    logger.info("Starting up — creating DB tables if not exist (unified ORM)")
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
     logger.info("Database tables ready")
+
+    # Seed festivals in database if not present
+    try:
+        async with AsyncSessionLocal() as session:
+            await seed_festivals(session)
+        logger.info("Festivals verified / seeded")
+    except Exception as exc:
+        logger.error(f"Failed to seed festivals: {exc}", exc_info=True)
+
+    # Ensure storage directories exist
+    greeting_settings.storage_dir.mkdir(parents=True, exist_ok=True)
+    greeting_settings.outbox_dir.mkdir(parents=True, exist_ok=True)
+
+    sweeper = asyncio.create_task(_sweep_cards_forever())
     yield
+    sweeper.cancel()
     logger.info("Shutting down — disposing DB engine")
     await engine.dispose()
 
@@ -35,28 +80,44 @@ async def lifespan(app: FastAPI):
 # ─── App ──────────────────────────────────────────────────────────────────────
 
 app = FastAPI(
-    title="Enterprise Chatbot API",
-    description="LangGraph-based ReAct agent for B2B user onboarding",
+    title="Sintex Enterprise AI & Greeting Studio API",
+    description="Unified LangGraph ReAct Agent, Onboarding, Claims, and Festive Greeting Template Studio",
     version="1.0.0",
     lifespan=lifespan,
 )
 
-# Mount static files and setup Jinja2 templates
+# ─── Mount Static Files & Templates ───────────────────────────────────────────
+
 app.mount("/static", StaticFiles(directory="static"), name="static")
 templates = Jinja2Templates(directory="templates")
+
+# Mount media directory for greeting background assets and thumbnails
+greeting_settings.storage_dir.mkdir(parents=True, exist_ok=True)
+app.mount("/media", StaticFiles(directory=greeting_settings.storage_dir), name="media")
+
+# Mount fonts directory for canvas preview
+if FONTS_DIR.exists():
+    app.mount("/fonts", StaticFiles(directory=FONTS_DIR), name="fonts")
+
+# Mount React Frontend Studio if built
+frontend_dist = Path(__file__).resolve().parent.parent / "frontend" / "dist"
+fallback_dist = Path("D:/sintex_template_feature/frontend/dist")
+studio_path = frontend_dist if frontend_dist.exists() else (fallback_dist if fallback_dist.exists() else None)
+if studio_path:
+    app.mount("/studio", StaticFiles(directory=studio_path, html=True), name="studio")
 
 # ─── CORS ─────────────────────────────────────────────────────────────────────
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],        # Tighten in production
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
 
-# ─── Global exception handler ─────────────────────────────────────────────────
+# ─── Global Exception Handler ─────────────────────────────────────────────────
 
 @app.exception_handler(Exception)
 async def global_exception_handler(request: Request, exc: Exception) -> JSONResponse:
@@ -69,25 +130,52 @@ async def global_exception_handler(request: Request, exc: Exception) -> JSONResp
         content={"detail": "An internal server error occurred."},
     )
 
-# ─── Routes ───────────────────────────────────────────────────────────────────
 
+# ─── Routers ──────────────────────────────────────────────────────────────────
+
+# Chatbot & QR Scanner routes
 app.include_router(chat_router, prefix="/api/v1")
-
 app.include_router(qr_router, prefix="/api/v1")
+
+# Greeting Template Studio Admin & Render routes
+app.include_router(templates_router)
+app.include_router(assets_router)
+app.include_router(festivals_router)
+app.include_router(greetings_router)
+app.include_router(cards_router)
+
+
+# ─── Health & Meta Endpoints ──────────────────────────────────────────────────
 
 @app.get("/health", tags=["health"])
 async def health_check() -> dict:
-    return {"status": "ok", "service": "syntex_agent_running"}
+    return {
+        "status": "ok",
+        "service": "sintex_unified_app",
+        "complex_scripts": bool(features.check("raqm")),
+    }
+
+
+@app.get("/api/fonts", tags=["meta"])
+def fonts(request: Request):
+    """Manifest of available fonts for greeting card rendering."""
+    base = (greeting_settings.public_base_url or str(request.base_url)).rstrip("/")
+    return manifest(base_url=base)
+
+
+@app.get("/api/auth/check", tags=["meta"], dependencies=[Depends(require_admin)])
+def auth_check():
+    """Verify admin API key for Greeting Studio."""
+    return {"ok": True}
 
 
 @app.get("/scanner", tags=["web"])
 async def scanner(request: Request):
-    """Alternative path for the QR scanner page."""
+    """Path for the QR scanner page."""
     return templates.TemplateResponse("index.html", {"request": request})
 
 
-
-# ─── Dev runner ───────────────────────────────────────────────────────────────
+# ─── Dev Runner ───────────────────────────────────────────────────────────────
 
 if __name__ == "__main__":
     import uvicorn

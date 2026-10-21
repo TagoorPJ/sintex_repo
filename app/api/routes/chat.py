@@ -837,7 +837,25 @@ async def chat_endpoint(
         str.maketrans("०१२३४५६७८९", "0123456789")
     )
     upload_entry_intent: str
-    if (
+
+    # If no upload flow is active and the user is answering a festival greeting prompt,
+    # bypass upload flow entirely unless they explicitly asked to upload a purchase.
+    is_greeting_reply = False
+    if not current_upload_stage and last_assistant_message:
+        last_lower = last_assistant_message.lower()
+        if any(kw in last_lower for kw in ("greeting card", "festival", "personalized card", "shop / business name", "your firm name", "your name", "dussehra", "dassehra", "diwali", "pongal", "ganesh", "त्यौहार", "सण", "refine", "रिफाइन")):
+            upload_explicit_kws = ("upload purchase", "purchase upload", "scan qr", "create claim", "claim status", "खरीद अपलोड", "बिल अपलोड")
+            if not any(k in (user_message or "").lower() for k in upload_explicit_kws):
+                is_greeting_reply = True
+
+    if is_greeting_reply:
+        upload_entry_intent = "none"
+        if current_upload_stage:
+            current_upload_stage = ""
+            upload_state_json_in = ""
+            await crud.set_match_results_json(db=db, conversation_id=conversation.id, value=None)
+        logger.info(f"{log_ctx} [UPLOAD INTENT] user is answering greeting prompt -> bypass upload flow")
+    elif (
         not current_upload_stage
         and _msg_stripped == "2"
         and upload_flow_handler._is_main_menu_text(last_assistant_message or "")

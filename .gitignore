@@ -22,3 +22,7 @@ __pycache__/
 scripts/export_*
 scripts/export_user_activity_last_month.py
 
+# Frontend dependencies and builds
+frontend/node_modules/
+frontend/dist/
+frontend/.env.local

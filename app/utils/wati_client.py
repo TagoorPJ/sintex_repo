@@ -155,3 +155,95 @@ async def send_session_document(
         "message": "Document sent to WhatsApp" if is_ok else failure_reason,
         "raw": body,
     }
+
+
+async def send_session_image(
+    *,
+    file_bytes: Optional[bytes] = None,
+    file_path: Optional[str] = None,
+    file_name: str = "greeting.jpg",
+    phone: str,
+    caption: Optional[str] = None,
+) -> dict:
+    """
+    Send an image directly to the user's WhatsApp chat via WATI's sendSessionFile API.
+    Can accept either raw bytes (in memory) or a file path on disk.
+    """
+    base = (os.getenv("WATI_LINK") or "").strip()
+    token = (os.getenv("BEARER_TOKEN") or os.getenv("WATI_TOKEN") or "").strip().strip('"').strip("'")
+    if token and not token.lower().startswith("bearer "):
+        token = f"Bearer {token}"
+
+    if not base:
+        logger.error("[wati_client] WATI_LINK not configured")
+        return {"ok": False, "status": None, "message": "WATI_LINK not configured", "raw": None}
+    if not token:
+        logger.error("[wati_client] BEARER_TOKEN not configured")
+        return {"ok": False, "status": None, "message": "BEARER_TOKEN not configured", "raw": None}
+
+    if file_bytes is None:
+        if not file_path or not os.path.exists(file_path):
+            logger.error(f"[wati_client] File not found: {file_path}")
+            return {"ok": False, "status": None, "message": "File not found", "raw": None}
+        with open(file_path, "rb") as fh:
+            content = fh.read()
+    else:
+        content = file_bytes
+
+    clean_phone = "".join(c for c in str(phone) if c.isdigit())
+    if not clean_phone:
+        return {"ok": False, "status": None, "message": "Invalid phone number", "raw": None}
+
+    if len(clean_phone) == 10:
+        clean_phone = "91" + clean_phone
+
+    base_clean = base if base.endswith("/") else base + "/"
+    url = f"{base_clean}api/v1/sendSessionFile/{clean_phone}"
+    params = {"caption": caption} if caption else None
+    headers = {"Authorization": token}
+
+    logger.info(f"[wati_client] POST image to {url} | file={file_name} | phone={clean_phone}")
+
+    import io
+    try:
+        async with httpx.AsyncClient(timeout=WATI_TIMEOUT, verify=False) as client:
+            files = {"file": (file_name, io.BytesIO(content), "image/jpeg")}
+            resp = await client.post(
+                url,
+                params=params,
+                headers=headers,
+                files=files,
+            )
+    except httpx.TimeoutException:
+        logger.error("[wati_client] Timeout sending image to WATI")
+        return {"ok": False, "status": None, "message": "WATI request timed out", "raw": None}
+    except Exception as exc:
+        logger.exception("[wati_client] Unexpected error sending image to WATI")
+        return {"ok": False, "status": None, "message": f"WATI error: {exc}", "raw": None}
+
+    logger.info(
+        f"[wati_client] WATI image response | status={resp.status_code} | "
+        f"body={(resp.text[:400] if resp.text else '')}"
+    )
+
+    body = None
+    try:
+        body = resp.json()
+    except Exception:
+        body = None
+
+    is_ok = resp.status_code == 200
+    if isinstance(body, dict):
+        for key in ("result", "success", "ok"):
+            if key in body:
+                is_ok = is_ok and bool(body.get(key))
+                break
+
+    return {
+        "ok": is_ok,
+        "status": resp.status_code,
+        "message": "Image sent to WhatsApp" if is_ok else f"WATI status {resp.status_code}: {resp.text[:100]}",
+        "raw": body,
+    }
+
+
