@@ -1,0 +1,624 @@
+{
+  "tanks": [
+    {
+      "id": "sintex_eterno",
+      "name": "Sintex Eterno",
+      "tagline": "The 50 Year Warranty Tank of India",
+      "category": "4P Product Range",
+      "warranty_years": 50,
+      "manufacturing_process": "Roto Moulding",
+      "available_colors": ["White"],
+      "threaded_lid": true,
+      "uv_protection": "Both tank and lid are UV stabilized",
+      "protections": {
+        "anti_viral": true,
+        "anti_bacterial": true,
+        "anti_algae": true,
+        "anti_fungal": true
+      },
+      "shape": "overhead_cylindrical",
+      "rohs_compliant": true,
+      "food_grade_plastic": true,
+      "virgin_plastic": true,
+      "key_highlights": [
+        "99% Effective against harmful bacteria, virus, fungus & algae",
+        "50-Year warranty - highest warranty in India",
+        "Active Silver technology for antimicrobial protection",
+        "Multi-ribbed contemporary design for superior structural strength",
+        "Threaded lid with UV protection"
+      ],
+      "specifications": [
+        {"capacity_litres": 500, "diameter_mm": 900, "diameter_inches": 35.43, "height_mm": 1018, "height_inches": 40.08, "diameter_hatch_mm": 407, "diameter_hatch_inches": 16.02, "sku_code": "CSWS-0050-01-ETERNO"},
+        {"capacity_litres": 750, "diameter_mm": 1030, "diameter_inches": 40.55, "height_mm": 1048, "height_inches": 41.26, "diameter_hatch_mm": 407, "diameter_hatch_inches": 16.02, "sku_code": "CSWS-0075-01-ETERNO"},
+        {"capacity_litres": 1000, "diameter_mm": 1105, "diameter_inches": 43.50, "height_mm": 1342.5, "height_inches": 52.85, "diameter_hatch_mm": 407, "diameter_hatch_inches": 16.02, "sku_code": "CSWS-0100-01-ETERNO"},
+        {"capacity_litres": 1500, "diameter_mm": 1300, "diameter_inches": 51.18, "height_mm": 1420, "height_inches": 55.91, "diameter_hatch_mm": 407, "diameter_hatch_inches": 16.02, "sku_code": "CSWS-0150-01-ETERNO"},
+        {"capacity_litres": 2000, "diameter_mm": 1350, "diameter_inches": 53.15, "height_mm": 1704.5, "height_inches": 67.11, "diameter_hatch_mm": 407, "diameter_hatch_inches": 16.02, "sku_code": "CSWS-0200-01-ETERNO"}
+      ]
+    },
+    {
+      "id": "sintex_pure",
+      "name": "Sintex Pure",
+      "tagline": "The Healthy Tank of India (Antimicrobial Innovation with Active Silver Technology)",
+      "category": "4P Product Range",
+      "warranty_years": 15,
+      "manufacturing_process": "Roto Moulding",
+      "available_colors": ["White", "Blue", "Yellow", "Green"],
+      "threaded_lid": false,
+      "uv_protection": "Both tank and lid are UV stabilized",
+      "protections": {
+        "anti_viral": true,
+        "anti_bacterial": true,
+        "anti_algae": true,
+        "anti_fungal": true
+      },
+      "shape": "overhead_cylindrical",
+      "rohs_compliant": true,
+      "food_grade_plastic": true,
+      "virgin_plastic": true,
+      "key_highlights": [
+        "99% Effective against harmful bacteria, virus, fungus & algae",
+        "Active Silver Technology providing unique anti-microbial layer",
+        "Wide capacity range up to 10,000 litres in healthy tank category",
+        "ROHS compliant as per European Standard"
+      ],
+      "specifications": [
+        {"capacity_litres": 500, "diameter_mm": 900, "diameter_inches": 35.43, "height_mm": 970, "height_inches": 38.19, "diameter_hatch_mm": 407, "diameter_hatch_inches": 16.02, "sku_code": "HSWS-0050-02-PURE"},
+        {"capacity_litres": 750, "diameter_mm": 1030, "diameter_inches": 40.55, "height_mm": 1100, "height_inches": 43.31, "diameter_hatch_mm": 407, "diameter_hatch_inches": 16.02, "sku_code": "HSWS-0075-01-PURE"},
+        {"capacity_litres": 1000, "diameter_mm": 1105, "diameter_inches": 43.50, "height_mm": 1240, "height_inches": 48.82, "diameter_hatch_mm": 407, "diameter_hatch_inches": 16.02, "sku_code": "HSWS-0100-01-PURE"},
+        {"capacity_litres": 1500, "diameter_mm": 1350, "diameter_inches": 53.15, "height_mm": 1295, "height_inches": 50.98, "diameter_hatch_mm": 410, "diameter_hatch_inches": 16.14, "sku_code": "HSWS-0150-01-PURE"},
+        {"capacity_litres": 2000, "diameter_mm": 1350, "diameter_inches": 53.15, "height_mm": 1615, "height_inches": 63.58, "diameter_hatch_mm": 410, "diameter_hatch_inches": 16.14, "sku_code": "HSWS-0200-01-PURE"},
+        {"capacity_litres": 3000, "diameter_mm": 1500, "diameter_inches": 59.06, "height_mm": 2020, "height_inches": 79.53, "diameter_hatch_mm": 515, "diameter_hatch_inches": 20.28, "sku_code": "HSWS-0300-01-PURE"},
+        {"capacity_litres": 5000, "diameter_mm": 2000, "diameter_inches": 78.74, "height_mm": 1910, "height_inches": 75.20, "diameter_hatch_mm": 520, "diameter_hatch_inches": 20.47, "sku_code": "HSWS-0500-01-PURE"},
+        {"capacity_litres": 10000, "diameter_mm": 2125, "diameter_inches": 83.66, "height_mm": 3160, "height_inches": 124.41, "diameter_hatch_mm": 520, "diameter_hatch_inches": 20.47, "sku_code": "HSWS-1000-03-PURE"}
+      ]
+    },
+    {
+      "id": "sintex_pure_plus",
+      "name": "Sintex Pure+",
+      "tagline": "The Healthy Tank of India with Advanced Protection",
+      "category": "4P Product Range",
+      "warranty_years": 15,
+      "manufacturing_process": "Roto Moulding",
+      "available_colors": ["White", "Blue", "Yellow", "Green"],
+      "threaded_lid": true,
+      "uv_protection": "Both tank and lid are UV stabilized",
+      "protections": {
+        "anti_viral": true,
+        "anti_bacterial": true,
+        "anti_algae": true,
+        "anti_fungal": true
+      },
+      "shape": "overhead_cylindrical",
+      "rohs_compliant": true,
+      "food_grade_plastic": true,
+      "virgin_plastic": true,
+      "key_highlights": [
+        "99% Effective against harmful bacteria, virus, fungus & algae",
+        "Advanced Multi-ribbed contemporary design",
+        "Threaded lid with UV protection for tight closure",
+        "Active Silver Protection"
+      ],
+      "specifications": [
+        {"capacity_litres": 500, "diameter_mm": 900, "diameter_inches": 35.43, "height_mm": 1018, "height_inches": 40.08, "diameter_hatch_mm": 407, "diameter_hatch_inches": 16.02, "sku_code": "CSWS-0050-01-PUREPLUS"},
+        {"capacity_litres": 750, "diameter_mm": 1030, "diameter_inches": 40.55, "height_mm": 1048, "height_inches": 41.26, "diameter_hatch_mm": 407, "diameter_hatch_inches": 16.02, "sku_code": "CSWS-0075-01-PUREPLUS"},
+        {"capacity_litres": 1000, "diameter_mm": 1105, "diameter_inches": 43.50, "height_mm": 1342.5, "height_inches": 52.85, "diameter_hatch_mm": 407, "diameter_hatch_inches": 16.02, "sku_code": "CSWS-0100-01-PUREPLUS"},
+        {"capacity_litres": 1500, "diameter_mm": 1300, "diameter_inches": 51.18, "height_mm": 1420, "height_inches": 55.91, "diameter_hatch_mm": 407, "diameter_hatch_inches": 16.02, "sku_code": "CSWS-0150-01-PUREPLUS"},
+        {"capacity_litres": 2000, "diameter_mm": 1350, "diameter_inches": 53.15, "height_mm": 1704.5, "height_inches": 67.11, "diameter_hatch_mm": 407, "diameter_hatch_inches": 16.02, "sku_code": "CSWS-0200-01-PUREPLUS"}
+      ]
+    },
+    {
+      "id": "sintex_tatva",
+      "name": "Sintex Tatva",
+      "tagline": "The Tank for All Weather Conditions - Guards against extreme temperature variations",
+      "category": "4P Product Range",
+      "warranty_years": 15,
+      "manufacturing_process": "Roto Moulding",
+      "available_colors": ["White", "Blue", "Yellow", "Green"],
+      "threaded_lid": true,
+      "uv_protection": "Both tank and lid are UV stabilized",
+      "protections": {
+        "anti_viral": true,
+        "anti_bacterial": true,
+        "anti_algae": true,
+        "anti_fungal": true
+      },
+      "shape": "overhead_cylindrical",
+      "rohs_compliant": true,
+      "food_grade_plastic": true,
+      "virgin_plastic": true,
+      "key_highlights": [
+        "ARPS (Additional Reliable Protective Shield) guards against extreme summer temperatures",
+        "Guards against extreme temperature variations",
+        "99% Effective against harmful bacteria, virus, fungus & algae",
+        "Contemporary Design ensures long-lasting strength & durability",
+        "Threaded lid with UV protection"
+      ],
+      "specifications": [
+        {"capacity_litres": 1000, "diameter_mm": 1105, "diameter_inches": 43.50, "height_mm": 1342, "height_inches": 52.83, "diameter_hatch_mm": 413, "diameter_hatch_inches": 16.26, "sku_code": "CSWS-0100-01-TATVA"},
+        {"capacity_litres": 2000, "diameter_mm": 1350, "diameter_inches": 53.15, "height_mm": 1705, "height_inches": 67.13, "diameter_hatch_mm": 413, "diameter_hatch_inches": 16.26, "sku_code": "CSWS-0200-01-TATVA"}
+      ]
+    },
+    {
+      "id": "sintex_trupuf",
+      "name": "Sintex Trupuf",
+      "tagline": "The Tank for the Most Extreme Weather Temperatures - Smart choice against steel tanks",
+      "category": "4P Product Range",
+      "warranty_years": 15,
+      "manufacturing_process": "Roto Moulding",
+      "available_colors": ["White"],
+      "threaded_lid": false,
+      "bolted_lid": true,
+      "uv_protection": "Bolted lid with UV protection, both tank and lid UV stabilized",
+      "protections": {
+        "anti_viral": true,
+        "anti_bacterial": true,
+        "anti_algae": true,
+        "anti_fungal": true
+      },
+      "shape": "overhead_cylindrical",
+      "food_grade_plastic": true,
+      "virgin_plastic": true,
+      "key_highlights": [
+        "High-quality 50 mm Polyurethane Foam (PUF) Insulation gives ultimate protection against temperature variations",
+        "Insulation density of 40 kg/m3 (± 2 kgs)",
+        "Bolted Lid: Unique Self-locking Lid with Hexa Bolts",
+        "Thermal Capability: In continuous 50°C for 6 hours outside, water temp inside doesn't rise above 0.5°C",
+        "Freezing Capability: In continuous -20°C for 6 hours outside, water temp inside doesn't drop below 0.5°C",
+        "Smart and durable alternative to expensive and heavy steel tanks"
+      ],
+      "specifications": [
+        {"capacity_litres": 1000, "diameter_mm": 1215, "diameter_inches": 47.83, "height_mm": 1345, "height_inches": 52.95, "diameter_hatch_mm": 440, "diameter_hatch_inches": 17.32, "sku_code": "TRUPUF-1000"}
+      ]
+    },
+    {
+      "id": "sintex_neo",
+      "name": "Sintex Neo",
+      "tagline": "The Smart Choice - Our most economical tank with same excellent hygiene features",
+      "category": "Popular Product Range",
+      "warranty_years": 3,
+      "manufacturing_process": "Blow Moulding",
+      "available_colors": ["White", "Blue", "Yellow", "Green"],
+      "threaded_lid": true,
+      "uv_protection": "Both tank and lid are UV stabilized",
+      "protections": {
+        "anti_viral": false,
+        "anti_bacterial": false,
+        "anti_algae": true,
+        "anti_fungal": false
+      },
+      "shape": "overhead_cylindrical",
+      "rohs_compliant": true,
+      "food_grade_plastic": true,
+      "virgin_plastic": true,
+      "key_highlights": [
+        "Most economical Sintex tank",
+        "Extra thick & flexible material for long life",
+        "Multi-ribbed design ensuring long-lasting strength & durability",
+        "Threaded lid with UV protection",
+        "Strong & unbreakable"
+      ],
+      "specifications": [
+        {"capacity_litres": 200, "diameter_mm": 700, "diameter_inches": 27.56, "height_mm": 600, "height_inches": 23.62, "diameter_hatch_mm": 275, "diameter_hatch_inches": 10.83, "sku_code": "CCWS-0020-01-NEO-TH"},
+        {"capacity_litres": 300, "diameter_mm": 700, "diameter_inches": 27.56, "height_mm": 870, "height_inches": 34.25, "diameter_hatch_mm": 275, "diameter_hatch_inches": 10.83, "sku_code": "CCWS-0030-01-NEO-TH"},
+        {"capacity_litres": 500, "diameter_mm": 920, "diameter_inches": 36.22, "height_mm": 845, "height_inches": 33.27, "diameter_hatch_mm": 417, "diameter_hatch_inches": 16.42, "sku_code": "CCWS-0050-01-NEO-TH"},
+        {"capacity_litres": 750, "diameter_mm": 920, "diameter_inches": 36.22, "height_mm": 1245, "height_inches": 49.02, "diameter_hatch_mm": 417, "diameter_hatch_inches": 16.42, "sku_code": "CCWS-0075-01-NEO-TH"},
+        {"capacity_litres": 1000, "diameter_mm": 1100, "diameter_inches": 43.31, "height_mm": 1172, "height_inches": 46.14, "diameter_hatch_mm": 417, "diameter_hatch_inches": 16.42, "sku_code": "CCWS-0100-01-NEO-TH"}
+      ]
+    },
+    {
+      "id": "sintex_smart",
+      "name": "Sintex Smart",
+      "tagline": "Say No to Second Hand Plastic - Introducing Sintex Smart with 100% Virgin Plastic",
+      "category": "Popular Product Range",
+      "warranty_years": 3,
+      "manufacturing_process": "Blow Moulding",
+      "available_colors": ["White", "Blue", "Yellow", "Green"],
+      "threaded_lid": false,
+      "side_hatch": true,
+      "uv_protection": "Tank & lid with UV protection",
+      "protections": {
+        "anti_viral": false,
+        "anti_bacterial": true,
+        "anti_algae": true,
+        "anti_fungal": false
+      },
+      "shape": "overhead_cylindrical",
+      "food_grade_plastic": true,
+      "virgin_plastic": true,
+      "key_highlights": [
+        ">99% Effective in protecting from harmful bacteria",
+        "Side-hatch helps in ease of cleaning",
+        "Multi-ribbed Design ensures strength & durability",
+        "No risk of micro plastic mixing",
+        "100% virgin & food grade plastic"
+      ],
+      "specifications": [
+        {"capacity_litres": 500, "diameter_mm": 850, "diameter_inches": 33.46, "height_mm": 1025, "height_inches": 40.35, "diameter_hatch_mm": 400, "diameter_hatch_inches": 15.74, "sku_code": "CCWS 0050-01-SMART-TW-WHITE"},
+        {"capacity_litres": 750, "diameter_mm": 980, "diameter_inches": 38.58, "height_mm": 1200, "height_inches": 47.24, "diameter_hatch_mm": 400, "diameter_hatch_inches": 15.74, "sku_code": "CCWS 0075-01-SMART-TW-WHITE"},
+        {"capacity_litres": 1000, "diameter_mm": 1055, "diameter_inches": 41.53, "height_mm": 1305, "height_inches": 51.37, "diameter_hatch_mm": 400, "diameter_hatch_inches": 15.74, "sku_code": "CCWS 0100-01-SMART-TW-WHITE"},
+        {"capacity_litres": 1500, "diameter_mm": 1230, "diameter_inches": 48.42, "height_mm": 1470, "height_inches": 57.87, "diameter_hatch_mm": 400, "diameter_hatch_inches": 15.74, "sku_code": "CCWS 0150-01-SMART-TW-WHITE"},
+        {"capacity_litres": 2000, "diameter_mm": 1350, "diameter_inches": 53.14, "height_mm": 1615, "height_inches": 63.58, "diameter_hatch_mm": 400, "diameter_hatch_inches": 15.74, "sku_code": "CCWS 0200-01-SMART-TW-WHITE"}
+      ]
+    },
+    {
+      "id": "sintex_reno",
+      "name": "Sintex Reno",
+      "tagline": "The Tank Built to Last - Assured performance with great value",
+      "category": "Popular Product Range",
+      "warranty_years": 5,
+      "manufacturing_process": "Roto Moulding",
+      "available_colors": ["Black", "White"],
+      "threaded_lid": false,
+      "uv_protection": "Both tank and lid are UV stabilized (100% UV stability)",
+      "protections": {
+        "anti_viral": false,
+        "anti_bacterial": false,
+        "anti_algae": true,
+        "anti_fungal": false
+      },
+      "shape": "overhead_cylindrical",
+      "rohs_compliant": true,
+      "food_grade_plastic": true,
+      "virgin_plastic": true,
+      "key_highlights": [
+        "Assured performance with great value",
+        "100% UV stability",
+        "Multi-ribbed design for long-lasting strength",
+        "ROHS compliant as per European Standard",
+        "Capacities up to 10,000 litres"
+      ],
+      "specifications": [
+        {"capacity_litres": 500, "diameter_mm": 900, "diameter_inches": 35.43, "height_mm": 885, "height_inches": 34.84, "diameter_hatch_mm": 400, "diameter_hatch_inches": 15.75, "sku_code": "WSCC-0050-01-DW"},
+        {"capacity_litres": 700, "diameter_mm": 900, "diameter_inches": 35.43, "height_mm": 1195, "height_inches": 47.05, "diameter_hatch_mm": 400, "diameter_hatch_inches": 15.75, "sku_code": "WSCC-0070-01-DW"},
+        {"capacity_litres": 1000, "diameter_mm": 1110, "diameter_inches": 43.70, "height_mm": 1170, "height_inches": 46.06, "diameter_hatch_mm": 406, "diameter_hatch_inches": 15.75, "sku_code": "WSCC-0100-01-DW"},
+        {"capacity_litres": 1500, "diameter_mm": 1365, "diameter_inches": 53.74, "height_mm": 1155, "height_inches": 45.17, "diameter_hatch_mm": 400, "diameter_hatch_inches": 15.98, "sku_code": "WSCC-0150-01-DW"},
+        {"capacity_litres": 2000, "diameter_mm": 1365, "diameter_inches": 53.74, "height_mm": 1515, "height_inches": 59.65, "diameter_hatch_mm": 407, "diameter_hatch_inches": 15.75, "sku_code": "WSCC-0200-01-DW"},
+        {"capacity_litres": 2500, "diameter_mm": 1365, "diameter_inches": 53.74, "height_mm": 1875, "height_inches": 73.82, "diameter_hatch_mm": 400, "diameter_hatch_inches": 16.02, "sku_code": "WSCC-0250-01-DW"},
+        {"capacity_litres": 3000, "diameter_mm": 1500, "diameter_inches": 59.06, "height_mm": 1830, "height_inches": 72.05, "diameter_hatch_mm": 400, "diameter_hatch_inches": 15.75, "sku_code": "WSCC-0300-01-DW"},
+        {"capacity_litres": 5000, "diameter_mm": 1800, "diameter_inches": 70.87, "height_mm": 2175, "height_inches": 85.63, "diameter_hatch_mm": 520, "diameter_hatch_inches": 20.47, "sku_code": "WSCC-0500-01-DW"},
+        {"capacity_litres": 10000, "diameter_mm": 2130, "diameter_inches": 83.86, "height_mm": 3155, "height_inches": 124.21, "diameter_hatch_mm": 510, "diameter_hatch_inches": 20.08, "sku_code": "WSCC-1000-01-DW"}
+      ]
+    },
+    {
+      "id": "sintex_titus",
+      "name": "Sintex Titus",
+      "tagline": "The Tank that Stands Strong - Threaded Lid for safety, an additional Black Lid for UV Protection",
+      "category": "Popular Product Range",
+      "warranty_years": 10,
+      "manufacturing_process": "Blow Moulding",
+      "available_colors": ["White", "Blue", "Yellow", "Green"],
+      "threaded_lid": true,
+      "double_layer_lids": true,
+      "uv_protection": "Both tank and lid are UV stabilized, double lid protection",
+      "protections": {
+        "anti_viral": false,
+        "anti_bacterial": true,
+        "anti_algae": true,
+        "anti_fungal": false
+      },
+      "shape": "overhead_cylindrical",
+      "rohs_compliant": true,
+      "food_grade_plastic": true,
+      "virgin_plastic": true,
+      "key_highlights": [
+        ">99% Effective against harmful bacteria",
+        "Double-Layer Lids: Threaded lid for safety + additional outer black lid for UV protection",
+        "Stylish looks with multi-ribbed design for high strength & durability",
+        "10-Year warranty",
+        "ROHS compliant as per European Standard"
+      ],
+      "specifications": [
+        {"capacity_litres": 500, "diameter_mm": 920, "diameter_inches": 36.22, "height_mm": 918, "height_inches": 36.14, "diameter_hatch_mm": 430, "diameter_hatch_inches": 16.93, "sku_code": "CCTS-0050-01-AB-NP-WHITE"},
+        {"capacity_litres": 750, "diameter_mm": 1030, "diameter_inches": 40.55, "height_mm": 1105, "height_inches": 43.50, "diameter_hatch_mm": 430, "diameter_hatch_inches": 16.93, "sku_code": "CCTS-0075-01-AB-NP-WHITE"},
+        {"capacity_litres": 1000, "diameter_mm": 1100, "diameter_inches": 43.31, "height_mm": 1260, "height_inches": 49.61, "diameter_hatch_mm": 430, "diameter_hatch_inches": 16.93, "sku_code": "CCTS-0100-01-AB-NP-WHITE"},
+        {"capacity_litres": 1500, "diameter_mm": 1350, "diameter_inches": 53.15, "height_mm": 1265, "height_inches": 49.80, "diameter_hatch_mm": 430, "diameter_hatch_inches": 16.93, "sku_code": "CCTS-0150-01-AB-NP-WHITE"},
+        {"capacity_litres": 2000, "diameter_mm": 1350, "diameter_inches": 53.15, "height_mm": 1640, "height_inches": 64.57, "diameter_hatch_mm": 430, "diameter_hatch_inches": 16.93, "sku_code": "CCTS-0200-01-AB-NP-WHITE"}
+      ]
+    },
+    {
+      "id": "sintex_hero",
+      "name": "Sintex Hero",
+      "tagline": "The Hero for Every Home - True value for your investment",
+      "category": "Popular Product Range",
+      "warranty_years": 10,
+      "manufacturing_process": "Roto Moulding",
+      "available_colors": ["White", "Blue", "Yellow", "Green"],
+      "threaded_lid": true,
+      "uv_protection": "Both tank and lid are UV stabilized (100% UV stability)",
+      "protections": {
+        "anti_viral": false,
+        "anti_bacterial": false,
+        "anti_algae": true,
+        "anti_fungal": false
+      },
+      "shape": "overhead_cylindrical",
+      "rohs_compliant": true,
+      "food_grade_plastic": true,
+      "virgin_plastic": true,
+      "key_highlights": [
+        "10-Year warranty with exceptional value for money",
+        "Stylish looks with multi-ribbed design for durability",
+        "Threaded lid with UV protection",
+        "ROHS compliant as per European Standard",
+        "100% UV stability & ultra durable"
+      ],
+      "specifications": [
+        {"capacity_litres": 500, "diameter_mm": 900, "diameter_inches": 35.43, "height_mm": 1005, "height_inches": 39.57, "diameter_hatch_mm": 395, "diameter_hatch_inches": 15.55, "sku_code": "ESWS-0050-01-HERO"},
+        {"capacity_litres": 750, "diameter_mm": 1030, "diameter_inches": 40.55, "height_mm": 1100, "height_inches": 43.31, "diameter_hatch_mm": 395, "diameter_hatch_inches": 15.55, "sku_code": "ESWS-0075-01-HERO"},
+        {"capacity_litres": 1000, "diameter_mm": 1105, "diameter_inches": 43.50, "height_mm": 1283, "height_inches": 50.51, "diameter_hatch_mm": 395, "diameter_hatch_inches": 15.55, "sku_code": "ESWS-0100-01-HERO"},
+        {"capacity_litres": 1500, "diameter_mm": 1350, "diameter_inches": 53.15, "height_mm": 1295, "height_inches": 50.98, "diameter_hatch_mm": 395, "diameter_hatch_inches": 15.55, "sku_code": "ESWS-0150-01-HERO"},
+        {"capacity_litres": 2000, "diameter_mm": 1350, "diameter_inches": 53.15, "height_mm": 1650, "height_inches": 64.96, "diameter_hatch_mm": 395, "diameter_hatch_inches": 15.55, "sku_code": "ESWS-0200-01-HERO"},
+        {"capacity_litres": 3000, "diameter_mm": 1475, "diameter_inches": 58.07, "height_mm": 1995, "height_inches": 78.54, "diameter_hatch_mm": 395, "diameter_hatch_inches": 15.55, "sku_code": "ESWS-0300-01-HERO"},
+        {"capacity_litres": 5000, "diameter_mm": 2000, "diameter_inches": 78.74, "height_mm": 1900, "height_inches": 74.80, "diameter_hatch_mm": 395, "diameter_hatch_inches": 15.55, "sku_code": "ESWS-0500-01-HERO"}
+      ]
+    },
+    {
+      "id": "sintex_ace",
+      "name": "Sintex Ace",
+      "tagline": "The 1st Side Hatch Tank of India - Easy to clean and check water level without climbing",
+      "category": "Popular Product Range",
+      "warranty_years": 10,
+      "manufacturing_process": "Roto Moulding",
+      "available_colors": ["White", "Blue", "Yellow", "Green"],
+      "threaded_lid": true,
+      "side_hatch": true,
+      "uv_protection": "Both tank and lid are UV stabilized (100% UV stability)",
+      "protections": {
+        "anti_viral": false,
+        "anti_bacterial": true,
+        "anti_algae": true,
+        "anti_fungal": false
+      },
+      "shape": "overhead_cylindrical",
+      "food_grade_plastic": true,
+      "virgin_plastic": true,
+      "key_highlights": [
+        "India's 1st Side Hatch Tank - inspect and clean easily without having to climb up on the tank",
+        ">99% Effective in protecting from harmful bacteria",
+        "10-Year warranty",
+        "Anti-algae & anti-bacterial",
+        "Threaded lid with UV protection"
+      ],
+      "specifications": [
+        {"capacity_litres": 500, "diameter_mm": 920, "diameter_inches": 36.22, "height_mm": 1012, "height_inches": 39.84, "diameter_hatch_mm": 405, "diameter_hatch_inches": 15.94, "sku_code": "HSWS-0050-01-ACE-WHITE"},
+        {"capacity_litres": 750, "diameter_mm": 1030, "diameter_inches": 40.55, "height_mm": 1145, "height_inches": 45.08, "diameter_hatch_mm": 405, "diameter_hatch_inches": 15.94, "sku_code": "HSWS-0075-01-ACE-WHITE"},
+        {"capacity_litres": 1000, "diameter_mm": 1100, "diameter_inches": 43.31, "height_mm": 1328, "height_inches": 52.28, "diameter_hatch_mm": 405, "diameter_hatch_inches": 15.94, "sku_code": "HSWS-0100-01-ACE-WHITE"},
+        {"capacity_litres": 2000, "diameter_mm": 1350, "diameter_inches": 53.15, "height_mm": 1694, "height_inches": 66.69, "diameter_hatch_mm": 405, "diameter_hatch_inches": 15.94, "sku_code": "HSWS-0200-01-ACE-WHITE"},
+        {"capacity_litres": 5000, "diameter_mm": 2000, "diameter_inches": 78.74, "height_mm": 1980, "height_inches": 77.95, "diameter_hatch_mm": 405, "diameter_hatch_inches": 15.94, "sku_code": "HSWS-0500-01-ACE-WHITE"}
+      ]
+    },
+    {
+      "id": "sintex_classic",
+      "name": "Sintex Classic",
+      "tagline": "The Iconic Tank of India - Classic Heritage product now available in White also",
+      "category": "Popular Product Range",
+      "warranty_years": 10,
+      "manufacturing_process": "Roto Moulding",
+      "available_colors": ["Black", "White"],
+      "threaded_lid": false,
+      "uv_protection": "Both tank and lid are UV stabilized",
+      "protections": {
+        "anti_viral": false,
+        "anti_bacterial": false,
+        "anti_algae": true,
+        "anti_fungal": false
+      },
+      "shape": "overhead_cylindrical",
+      "food_grade_plastic": true,
+      "virgin_plastic": true,
+      "key_highlights": [
+        "The iconic, heritage water tank of India trusted for decades",
+        "Widest capacity range: 500 litres up to 25,000 litres",
+        "Anti-algae formation",
+        "10-Year warranty",
+        "Ultra durable construction"
+      ],
+      "specifications": [
+        {"capacity_litres": 500, "diameter_mm": 1030, "diameter_inches": 40.55, "height_mm": 755, "height_inches": 29.72, "diameter_hatch_mm": 400, "diameter_hatch_inches": 15.75, "sku_code": "CCWS-0050-01-DW"},
+        {"capacity_litres": 500, "diameter_mm": 900, "diameter_inches": 35.43, "height_mm": 970, "height_inches": 38.19, "diameter_hatch_mm": 407, "diameter_hatch_inches": 16.02, "sku_code": "CCWS-0050-02-DW"},
+        {"capacity_litres": 700, "diameter_mm": 1030, "diameter_inches": 40.55, "height_mm": 1080, "height_inches": 42.52, "diameter_hatch_mm": 407, "diameter_hatch_inches": 16.02, "sku_code": "CCWS-0070-01-DW"},
+        {"capacity_litres": 750, "diameter_mm": 1030, "diameter_inches": 40.55, "height_mm": 1100, "height_inches": 43.31, "diameter_hatch_mm": 407, "diameter_hatch_inches": 16.02, "sku_code": "CCWS-0075-01-DW"},
+        {"capacity_litres": 1000, "diameter_mm": 1105, "diameter_inches": 43.50, "height_mm": 1240, "height_inches": 48.82, "diameter_hatch_mm": 407, "diameter_hatch_inches": 16.02, "sku_code": "CCWS-0100-01-DW"},
+        {"capacity_litres": 1500, "diameter_mm": 1350, "diameter_inches": 53.15, "height_mm": 1295, "height_inches": 50.98, "diameter_hatch_mm": 410, "diameter_hatch_inches": 16.14, "sku_code": "CCWS-0150-01-DW"},
+        {"capacity_litres": 2000, "diameter_mm": 1350, "diameter_inches": 53.15, "height_mm": 1615, "height_inches": 63.58, "diameter_hatch_mm": 410, "diameter_hatch_inches": 16.14, "sku_code": "CCWS-0200-01-DW"},
+        {"capacity_litres": 2000, "diameter_mm": 1400, "diameter_inches": 55.12, "height_mm": 1580, "height_inches": 62.20, "diameter_hatch_mm": 520, "diameter_hatch_inches": 20.47, "sku_code": "CCWS-0200-02-DW"},
+        {"capacity_litres": 2500, "diameter_mm": 1500, "diameter_inches": 59.06, "height_mm": 1720, "height_inches": 67.72, "diameter_hatch_mm": 515, "diameter_hatch_inches": 20.28, "sku_code": "CCWS-0250-01-DW"},
+        {"capacity_litres": 3000, "diameter_mm": 1500, "diameter_inches": 59.06, "height_mm": 2020, "height_inches": 79.53, "diameter_hatch_mm": 515, "diameter_hatch_inches": 20.28, "sku_code": "CCWS-0300-01-DW"},
+        {"capacity_litres": 5000, "diameter_mm": 2000, "diameter_inches": 78.74, "height_mm": 1910, "height_inches": 75.20, "diameter_hatch_mm": 520, "diameter_hatch_inches": 20.47, "sku_code": "CCWS-0500-01-DW"},
+        {"capacity_litres": 5000, "diameter_mm": 2000, "diameter_inches": 78.74, "height_mm": 2000, "height_inches": 78.74, "diameter_hatch_mm": 940, "diameter_hatch_inches": 37.01, "sku_code": "CCWS-0500-02-DW"},
+        {"capacity_litres": 7500, "diameter_mm": 2000, "diameter_inches": 78.74, "height_mm": 2890, "height_inches": 113.78, "diameter_hatch_mm": 520, "diameter_hatch_inches": 20.47, "sku_code": "CCWS-0750-01-DW"},
+        {"capacity_litres": 10000, "diameter_mm": 2550, "diameter_inches": 100.39, "height_mm": 2530, "height_inches": 99.61, "diameter_hatch_mm": 520, "diameter_hatch_inches": 20.47, "sku_code": "CCWS-1000-02-DW"},
+        {"capacity_litres": 10000, "diameter_mm": 2125, "diameter_inches": 83.66, "height_mm": 3160, "height_inches": 124.41, "diameter_hatch_mm": 520, "diameter_hatch_inches": 20.47, "sku_code": "CCWS-1000-03-DW"},
+        {"capacity_litres": 15000, "diameter_mm": 2550, "diameter_inches": 100.39, "height_mm": 3580, "height_inches": 140.94, "diameter_hatch_mm": 520, "diameter_hatch_inches": 20.47, "sku_code": "CCWS-1500-01-DW"},
+        {"capacity_litres": 15000, "diameter_mm": 3000, "diameter_inches": 118.11, "height_mm": 2830, "height_inches": 111.42, "diameter_hatch_mm": 510, "diameter_hatch_inches": 20.08, "sku_code": "CCWS-1500-02-DW"},
+        {"capacity_litres": 20000, "diameter_mm": 2580, "diameter_inches": 101.57, "height_mm": 4620, "height_inches": 181.89, "diameter_hatch_mm": 520, "diameter_hatch_inches": 20.47, "sku_code": "CCWS-2000-01-DW"},
+        {"capacity_litres": 20000, "diameter_mm": 3000, "diameter_inches": 118.11, "height_mm": 3390, "height_inches": 133.46, "diameter_hatch_mm": 521, "diameter_hatch_inches": 20.51, "sku_code": "CCWS-2000-02-DW"},
+        {"capacity_litres": 25000, "diameter_mm": 3050, "diameter_inches": 120.08, "height_mm": 4070, "height_inches": 160.24, "diameter_hatch_mm": 520, "diameter_hatch_inches": 20.47, "sku_code": "CCWS-2500-01-DW"}
+      ]
+    },
+    {
+      "id": "sintex_isi",
+      "name": "Sintex ISI",
+      "tagline": "The Trusted Choice of India - Widely preferred ISI tank",
+      "category": "Standard Range",
+      "warranty_years": 5,
+      "manufacturing_process": "Roto Moulding",
+      "standard_conformance": "IS 12701:1996 (Reaffirmed 2006)",
+      "available_colors": ["Black"],
+      "threaded_lid": false,
+      "uv_protection": "Both tank and lid UV protected",
+      "protections": {
+        "anti_viral": false,
+        "anti_bacterial": false,
+        "anti_algae": true,
+        "anti_fungal": false
+      },
+      "shape": "overhead_cylindrical",
+      "food_grade_plastic": true,
+      "virgin_plastic": true,
+      "key_highlights": [
+        "Conforms to standards specified in IS 12701:1996 (Reaffirmed 2006)",
+        "Certified with ISI Standard mark",
+        "100% Food grade plastic & virgin plastic",
+        "Anti-algae protection",
+        "Capacities from 300 up to 20,000 litres"
+      ],
+      "specifications": [
+        {"capacity_litres": 300, "diameter_mm": 750, "diameter_inches": 29.53, "height_mm": 875, "height_inches": 34.45, "diameter_hatch_mm": 280, "diameter_hatch_inches": 11.02},
+        {"capacity_litres": 500, "diameter_mm": 1030, "diameter_inches": 40.55, "height_mm": 755, "height_inches": 29.72, "diameter_hatch_mm": 400, "diameter_hatch_inches": 15.75},
+        {"capacity_litres": 500, "diameter_mm": 900, "diameter_inches": 35.43, "height_mm": 970, "height_inches": 38.19, "diameter_hatch_mm": 407, "diameter_hatch_inches": 16.02},
+        {"capacity_litres": 700, "diameter_mm": 1030, "diameter_inches": 40.55, "height_mm": 1080, "height_inches": 42.52, "diameter_hatch_mm": 407, "diameter_hatch_inches": 16.02},
+        {"capacity_litres": 1000, "diameter_mm": 1105, "diameter_inches": 43.50, "height_mm": 1240, "height_inches": 48.82, "diameter_hatch_mm": 407, "diameter_hatch_inches": 16.02},
+        {"capacity_litres": 1500, "diameter_mm": 1350, "diameter_inches": 53.15, "height_mm": 1295, "height_inches": 50.98, "diameter_hatch_mm": 410, "diameter_hatch_inches": 16.14},
+        {"capacity_litres": 2000, "diameter_mm": 1400, "diameter_inches": 55.12, "height_mm": 1580, "height_inches": 62.20, "diameter_hatch_mm": 520, "diameter_hatch_inches": 20.47},
+        {"capacity_litres": 2500, "diameter_mm": 1500, "diameter_inches": 59.06, "height_mm": 1720, "height_inches": 67.72, "diameter_hatch_mm": 515, "diameter_hatch_inches": 20.28},
+        {"capacity_litres": 3000, "diameter_mm": 1500, "diameter_inches": 59.06, "height_mm": 2020, "height_inches": 79.53, "diameter_hatch_mm": 515, "diameter_hatch_inches": 20.28},
+        {"capacity_litres": 5000, "diameter_mm": 2000, "diameter_inches": 78.74, "height_mm": 1910, "height_inches": 75.20, "diameter_hatch_mm": 520, "diameter_hatch_inches": 20.47},
+        {"capacity_litres": 7500, "diameter_mm": 2000, "diameter_inches": 78.74, "height_mm": 2890, "height_inches": 113.78, "diameter_hatch_mm": 520, "diameter_hatch_inches": 20.47},
+        {"capacity_litres": 10000, "diameter_mm": 2550, "diameter_inches": 100.39, "height_mm": 2530, "height_inches": 99.61, "diameter_hatch_mm": 520, "diameter_hatch_inches": 20.47},
+        {"capacity_litres": 10000, "diameter_mm": 2125, "diameter_inches": 83.66, "height_mm": 3160, "height_inches": 124.41, "diameter_hatch_mm": 520, "diameter_hatch_inches": 20.47},
+        {"capacity_litres": 15000, "diameter_mm": 2550, "diameter_inches": 100.39, "height_mm": 3580, "height_inches": 140.94, "diameter_hatch_mm": 520, "diameter_hatch_inches": 20.47},
+        {"capacity_litres": 20000, "diameter_mm": 2580, "diameter_inches": 101.57, "height_mm": 4620, "height_inches": 181.89, "diameter_hatch_mm": 520, "diameter_hatch_inches": 20.47}
+      ]
+    },
+    {
+      "id": "sintex_loft",
+      "name": "Sintex Loft",
+      "tagline": "The Great Space Saver - Compact design to fit available space",
+      "category": "Loft & Indoor Range",
+      "warranty_years": 5,
+      "manufacturing_process": "Roto Moulding",
+      "available_colors": ["White", "Black"],
+      "threaded_lid": false,
+      "uv_protection": "Indoor space optimized",
+      "protections": {
+        "anti_viral": false,
+        "anti_bacterial": false,
+        "anti_algae": false,
+        "anti_fungal": false
+      },
+      "shape": "rectangular_loft",
+      "rohs_compliant": true,
+      "food_grade_plastic": true,
+      "virgin_plastic": true,
+      "key_highlights": [
+        "Rectangular space-saver designed specifically for indoor lofts, bathrooms, kitchens, and attics",
+        "Low height profile to fit into tight horizontal clearances",
+        "100% Food grade plastic & virgin plastic",
+        "ROHS compliant as per European Standard",
+        "Capacities from 100L up to 1000L"
+      ],
+      "specifications": [
+        {"capacity_litres": 100, "length_mm": 590, "length_inches": 23.23, "width_mm": 590, "width_inches": 23.23, "height_mm": 385, "height_inches": 15.16, "sku_code": "IWS-0010-01-WHITE"},
+        {"capacity_litres": 150, "length_mm": 720, "length_inches": 28.35, "width_mm": 720, "width_inches": 28.35, "height_mm": 385, "height_inches": 15.16, "sku_code": "IWS-0015-01-WHITE"},
+        {"capacity_litres": 200, "length_mm": 960, "length_inches": 37.80, "width_mm": 720, "width_inches": 28.35, "height_mm": 360, "height_inches": 14.17, "sku_code": "IWS-0020-01-WHITE"},
+        {"capacity_litres": 220, "length_mm": 1030, "length_inches": 40.55, "width_mm": 720, "width_inches": 28.35, "height_mm": 385, "height_inches": 15.16, "sku_code": "IWS-0022-01-WHITE"},
+        {"capacity_litres": 270, "length_mm": 1090, "length_inches": 42.91, "width_mm": 720, "width_inches": 28.35, "height_mm": 430, "height_inches": 16.93, "sku_code": "IWS-0027-01-WHITE"},
+        {"capacity_litres": 275, "length_mm": 1250, "length_inches": 49.21, "width_mm": 890, "width_inches": 35.04, "height_mm": 325, "height_inches": 12.80, "sku_code": "IWS-0027-02-WHITE"},
+        {"capacity_litres": 300, "length_mm": 1220, "length_inches": 48.03, "width_mm": 830, "width_inches": 32.68, "height_mm": 350, "height_inches": 13.78, "sku_code": "IWS-0030-01-WHITE"},
+        {"capacity_litres": 375, "length_mm": 1255, "length_inches": 49.41, "width_mm": 955, "width_inches": 37.60, "height_mm": 385, "height_inches": 15.16, "sku_code": "IWS-0037-01-WHITE"},
+        {"capacity_litres": 400, "length_mm": 1550, "length_inches": 61.02, "width_mm": 1000, "width_inches": 39.37, "height_mm": 325, "height_inches": 12.80, "sku_code": "IWS-0040-02-WHITE"},
+        {"capacity_litres": 425, "length_mm": 1255, "length_inches": 49.41, "width_mm": 955, "width_inches": 37.60, "height_mm": 407, "height_inches": 17.13, "sku_code": "IWS-0042-01-WHITE"},
+        {"capacity_litres": 460, "length_mm": 1524, "length_inches": 60.00, "width_mm": 927, "width_inches": 36.50, "height_mm": 325, "height_inches": 16.02, "sku_code": "IWS-0046-03-WHITE"},
+        {"capacity_litres": 475, "length_mm": 1585, "length_inches": 52.40, "width_mm": 1155, "width_inches": 45.47, "height_mm": 435, "height_inches": 12.80, "sku_code": "IWS-0047-02-WHITE"},
+        {"capacity_litres": 500, "length_mm": 1400, "length_inches": 55.12, "width_mm": 1000, "width_inches": 39.37, "height_mm": 510, "height_inches": 17.13, "sku_code": "IWS-0050-01-WHITE"},
+        {"capacity_litres": 500, "length_mm": 1525, "length_inches": 60.04, "width_mm": 800, "width_inches": 31.50, "height_mm": 510, "height_inches": 20.08, "sku_code": "IWS-0050-02-WHITE"},
+        {"capacity_litres": 625, "length_mm": 1440, "length_inches": 56.69, "width_mm": 970, "width_inches": 38.19, "height_mm": 535, "height_inches": 21.06, "sku_code": "IWS-0062-01-WHITE"},
+        {"capacity_litres": 825, "length_mm": 1960, "length_inches": 77.17, "width_mm": 990, "width_inches": 38.98, "height_mm": 545, "height_inches": 21.46, "sku_code": "IWS-0082-01-WHITE"},
+        {"capacity_litres": 1000, "length_mm": 1990, "length_inches": 78.35, "width_mm": 990, "width_inches": 38.98, "height_mm": 635, "height_inches": 25.00, "sku_code": "IWS-0100-01-WHITE"}
+      ]
+    },
+    {
+      "id": "sintex_underground_sump",
+      "name": "Sintex Underground Water Tanks - Sumps",
+      "tagline": "Sturdy Design, Easy Installation, Enduring Performance",
+      "category": "Underground Range",
+      "warranty_years": 5,
+      "manufacturing_process": "Roto Moulding",
+      "available_colors": ["Black"],
+      "shape": "underground_sump",
+      "food_grade_plastic": true,
+      "virgin_plastic": true,
+      "key_highlights": [
+        "One-piece moulded design: no joints, seams, or welds",
+        "Impermeable to tree roots - prevents penetration and damage",
+        "Can be installed without an additional retaining wall (strong and self-supporting)",
+        "Equipped with strong SMC Lid",
+        "100% Food grade and virgin plastic"
+      ],
+      "specifications": [
+        {"capacity_litres": 1000, "diameter_mm": 1200, "diameter_inches": 47.24, "height_mm": 1385, "height_inches": 54.53, "no_of_manhole": 1, "manhole_extension_mm": 200, "manhole_diameter_mm": 400},
+        {"capacity_litres": 2000, "diameter_mm": 1400, "diameter_inches": 55.12, "height_mm": 1850, "height_inches": 72.83, "no_of_manhole": 1, "manhole_extension_mm": 200, "manhole_diameter_mm": 400},
+        {"capacity_litres": 3000, "diameter_mm": 1650, "diameter_inches": 64.96, "height_mm": 1950, "height_inches": 76.77, "no_of_manhole": 1, "manhole_extension_mm": 200, "manhole_diameter_mm": 400},
+        {"capacity_litres": 4000, "diameter_mm": 1800, "diameter_inches": 70.87, "height_mm": 2150, "height_inches": 84.65, "no_of_manhole": 1, "manhole_extension_mm": 200, "manhole_diameter_mm": 400},
+        {"capacity_litres": 5000, "diameter_mm": 2000, "diameter_inches": 78.74, "height_mm": 2250, "height_inches": 88.58, "no_of_manhole": 1, "manhole_extension_mm": 200, "manhole_diameter_mm": 400},
+        {"capacity_litres": 6000, "diameter_mm": 2150, "diameter_inches": 84.65, "height_mm": 2300, "height_inches": 90.55, "no_of_manhole": 1, "manhole_extension_mm": 200, "manhole_diameter_mm": 400}
+      ]
+    },
+    {
+      "id": "sintex_underground_frp",
+      "name": "Sintex Underground Water Tanks (FRP)",
+      "tagline": "Durable, Hygienic and Space Saving in One Tank",
+      "category": "Underground Range",
+      "warranty_years": 50,
+      "manufacturing_process": "FRP Automated",
+      "shape": "underground_frp",
+      "key_highlights": [
+        "Made from Fiber Reinforced Plastic (FRP) that withstands heavy earth pressure",
+        "Available for 10,000 to 50,000 litres storage capacity",
+        "Virgin Plastic and FDA Approved food grade material",
+        "Non-porous: does not allow water to get contaminated",
+        "Impermeable to roots of trees",
+        "50+ Years lifespan, leak proof, rust free & non-corrosion",
+        "Underground or onground installation"
+      ],
+      "capacities_litres": [10000, 20000, 30000, 40000, 50000]
+    },
+    {
+      "id": "sintex_pure_community_panel_tank",
+      "name": "Sintex Pure Community Panel Tank",
+      "tagline": "Smart Solutions Large Storages - Reclaim your terrace space",
+      "category": "Commercial & Institutional Panel Range",
+      "manufacturing_process": "SMC Compression Moulding",
+      "key_highlights": [
+        "Stores up to 16,00,000 litres of water (16 Lakh Litres)",
+        "Replaces multiple individual water tanks with one 25,000L+ panel tank to save terrace space",
+        "Superior to RCC Tanks: Lightweight, rust-free, customizable, easy to install/move/clean",
+        "50+ Years lifespan with leak-proof operations",
+        "100% Food grade plastic, FDA approved, no algae formation, no chemical leaching",
+        "Installed in prestigious locations: Rashtrapati Bhawan, Udyog Bhawan, Leela Business Park Mumbai (84,000L)",
+        "Preferred for Railways, Hospitals, Hotels, Institutions, Commercial Complexes, Defence, Malls, CPWD, PWD, Data Centres, IT Parks"
+      ]
+    },
+    {
+      "id": "sintex_advanced_septic_tank",
+      "name": "Sintex Advanced Septic Tanks",
+      "tagline": "Waste Management, Made Easy & Efficient",
+      "category": "Waste Management Solution",
+      "series": ["PWTS", "AST"],
+      "key_highlights": [
+        "Normal septic tanks reduce BOD by only 40%; Sintex cutting-edge technology reduces BOD by 70%",
+        "Capacities range from 800 Litre to 6000 Litre capacity",
+        "Rust and corrosion proof & leak proof",
+        "Zero electricity used - operates completely passively",
+        "Easy transportation & rapid installation",
+        "Includes flexible inlet, manhole cover, flexible outlet, media chamber, pall ring media"
+      ],
+      "capacities_litres": [800, 1000, 2000, 3000, 4000, 5000, 6000]
+    },
+    {
+      "id": "sintex_packaged_stp",
+      "name": "Sintex Packaged Sewage Treatment Plants (STP)",
+      "tagline": "Reclaim Water, Rethink Water Management",
+      "category": "Waste Management Solution",
+      "key_highlights": [
+        "Built with durable FRP materials",
+        "Recycle capacity between 10 to 650 KLD (Kilo Litres per Day)",
+        "Reduces BOD by 90-95% (Inlet BOD 250-300 mg/L treated to Outlet BOD < 30 mg/L)",
+        "Converts grey water into safe, reusable water for irrigation and cleaning",
+        "Fully automated, saves power, negligible maintenance cost",
+        "50+ Years lifespan, underground or onground installation"
+      ]
+    }
+  ]
+}
