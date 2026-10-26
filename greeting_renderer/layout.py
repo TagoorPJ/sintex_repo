@@ -77,7 +77,7 @@ def resolve_text(f: TextField, values: dict[str, str | None]) -> str | None:
     else:
         raw_val = values.get(f.variable or "")
         if f.variable == "enterprise":
-            text = clean_text(raw_val).upper()
+            text = clean_text(raw_val)
         elif f.variable == "name":
             text = to_title_camel_case(raw_val)
         else:

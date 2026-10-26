@@ -266,7 +266,8 @@ async def seed_festivals(db: AsyncSession) -> None:
             db.add(t)
             await db.commit()
         else:
-            tmpl.fields = refined_fields
+            if not tmpl.fields:
+                tmpl.fields = refined_fields
             if not tmpl.is_active:
                 tmpl.is_active = True
             if not tmpl.background_asset_id and bg_asset_id:
@@ -276,15 +277,13 @@ async def seed_festivals(db: AsyncSession) -> None:
 
 
 def render_template(t: Template, values: dict[str, str | None]) -> bytes:
-    """Renders to JPEG bytes in memory with firm in FULL CAPITALS and name in Camel Case.
-    Enforces pixel-perfect centered alignment, radiant gold for firm, and crisp white for user."""
+    """Renders to JPEG bytes in memory using the exact styles, fonts, colors,
+    and field boxes designed and saved in the Template Studio frontend."""
     from greeting_renderer.layout import to_title_camel_case
 
     cleaned = {}
     for k, v in values.items():
-        if k == "enterprise":
-            cleaned[k] = clean_text(v).upper()
-        elif k == "name":
+        if k == "name":
             cleaned[k] = to_title_camel_case(v)
         else:
             cleaned[k] = clean_text(v)
@@ -298,109 +297,57 @@ def render_template(t: Template, values: dict[str, str | None]) -> bytes:
         elif len(digits) == 10:
             cleaned["number"] = f"+91 {digits[:5]} {digits[5:]}"
 
-    firm_y = 1255 if has_phone else 1285
-    name_y = 1325 if has_phone else 1365
-    phone_y = 1390
-
-    firm_size = 44 if has_phone else 48
-    name_size = 36 if has_phone else 40
-    phone_size = 26
-
     raw_fields = t.fields or []
-    sanitized_fields = []
-    seen_vars = set()
+    fields: list[TextField] = []
 
     for f in raw_fields:
-        fd = dict(f) if isinstance(f, dict) else f.model_dump()
-        var = fd.get("variable")
-        st = fd.setdefault("style", {})
-        bx = fd.setdefault("box", {})
-        ft = fd.setdefault("fit", {})
+        if isinstance(f, TextField):
+            fields.append(f)
+        elif isinstance(f, dict):
+            fields.append(TextField.model_validate(f))
 
-        if var == "enterprise":
-            seen_vars.add("enterprise")
-            st["fontFamily"] = "poppins"
-            st["fontWeight"] = 700
-            st["fontSize"] = firm_size
-            st["color"] = "#8B0000"  # Deep Festive Maroon / Sintex Red
-            st["align"] = "center"
-            st["shadow"] = False
-            st["textCase"] = "upper"
-            bx["x"] = 180
-            bx["width"] = 720
-            bx["y"] = firm_y
-            ft["minFontSize"] = 24
-            ft["maxLines"] = 1
-        elif var == "name":
-            seen_vars.add("name")
-            st["fontFamily"] = "poppins"
-            st["fontWeight"] = 600
-            st["fontSize"] = name_size
-            st["color"] = "#1A1A1A"  # Crisp Charcoal Soft Black
-            st["align"] = "center"
-            st["shadow"] = False
-            st["textCase"] = "title"
-            bx["x"] = 180
-            bx["width"] = 720
-            bx["y"] = name_y
-            ft["minFontSize"] = 20
-            ft["maxLines"] = 1
-        elif var == "number":
-            seen_vars.add("number")
-            st["fontFamily"] = "poppins"
-            st["fontWeight"] = 500
-            st["fontSize"] = phone_size
-            st["color"] = "#4B5563"  # Muted Slate
-            st["align"] = "center"
-            st["shadow"] = False
-            bx["x"] = 180
-            bx["width"] = 720
-            bx["y"] = phone_y
-            ft["minFontSize"] = 18
-            ft["maxLines"] = 1
-        else:
-            if st.get("fontFamily") == "greatvibes":
-                st["fontFamily"] = "poppins"
-                st["fontWeight"] = 600
-                if st.get("fontSize", 0) > 48:
-                    st["fontSize"] = 44
-
-        sanitized_fields.append(TextField.model_validate(fd))
-
-    # Guarantee all 3 core personalized variables exist even if omitted from database template
-    if "enterprise" not in seen_vars:
-        sanitized_fields.append(TextField.model_validate({
-            "id": "firm_name",
-            "kind": "variable",
-            "variable": "enterprise",
-            "label": "Enterprise / Firm Name",
-            "box": {"x": 180, "y": firm_y, "width": 720},
-            "style": {"fontFamily": "poppins", "fontWeight": 700, "fontSize": firm_size, "color": "#8B0000", "align": "center", "shadow": False, "textCase": "upper"},
-            "fit": {"minFontSize": 24, "maxLines": 1},
-            "whenEmpty": {"mode": "hide", "text": ""}
-        }))
-    if "name" not in seen_vars:
-        sanitized_fields.append(TextField.model_validate({
-            "id": "user_name",
-            "kind": "variable",
-            "variable": "name",
-            "label": "User Name",
-            "box": {"x": 180, "y": name_y, "width": 720},
-            "style": {"fontFamily": "poppins", "fontWeight": 600, "fontSize": name_size, "color": "#1A1A1A", "align": "center", "shadow": False, "textCase": "title"},
-            "fit": {"minFontSize": 20, "maxLines": 1},
-            "whenEmpty": {"mode": "hide", "text": ""}
-        }))
-    if "number" not in seen_vars and has_phone:
-        sanitized_fields.append(TextField.model_validate({
-            "id": "user_phone",
-            "kind": "variable",
-            "variable": "number",
-            "label": "Mobile Number",
-            "box": {"x": 180, "y": phone_y, "width": 720},
-            "style": {"fontFamily": "poppins", "fontWeight": 500, "fontSize": phone_size, "color": "#4B5563", "align": "center", "shadow": False},
-            "fit": {"minFontSize": 18, "maxLines": 1},
-            "whenEmpty": {"mode": "hide", "text": ""}
-        }))
+    # If the template had no fields at all (e.g. empty draft), provide default layout
+    if not fields:
+        firm_y = 1255 if has_phone else 1285
+        name_y = 1325 if has_phone else 1365
+        phone_y = 1390
+        firm_size = 44 if has_phone else 48
+        name_size = 36 if has_phone else 40
+        phone_size = 26
+        default_defs = [
+            {
+                "id": "firm_name",
+                "kind": "variable",
+                "variable": "enterprise",
+                "label": "Enterprise / Firm Name",
+                "box": {"x": 180, "y": firm_y, "width": 720},
+                "style": {"fontFamily": "poppins", "fontWeight": 700, "fontSize": firm_size, "color": "#8B0000", "align": "center", "shadow": False, "textCase": "upper"},
+                "fit": {"minFontSize": 24, "maxLines": 1},
+                "whenEmpty": {"mode": "hide", "text": ""}
+            },
+            {
+                "id": "user_name",
+                "kind": "variable",
+                "variable": "name",
+                "label": "User Name",
+                "box": {"x": 180, "y": name_y, "width": 720},
+                "style": {"fontFamily": "poppins", "fontWeight": 600, "fontSize": name_size, "color": "#1A1A1A", "align": "center", "shadow": False, "textCase": "title"},
+                "fit": {"minFontSize": 20, "maxLines": 1},
+                "whenEmpty": {"mode": "hide", "text": ""}
+            },
+        ]
+        if has_phone:
+            default_defs.append({
+                "id": "user_phone",
+                "kind": "variable",
+                "variable": "number",
+                "label": "Mobile Number",
+                "box": {"x": 180, "y": phone_y, "width": 720},
+                "style": {"fontFamily": "poppins", "fontWeight": 500, "fontSize": phone_size, "color": "#4B5563", "align": "center", "shadow": False},
+                "fit": {"minFontSize": 18, "maxLines": 1},
+                "whenEmpty": {"mode": "hide", "text": ""}
+            })
+        fields = [TextField.model_validate(fd) for fd in default_defs]
 
     background = None
     if t.background and t.background.storage_key:
@@ -410,6 +357,6 @@ def render_template(t: Template, values: dict[str, str | None]) -> bytes:
                 background = bg_path
         except Exception:
             background = None
-    return to_jpeg(render(t.canvas_width, t.canvas_height, background, sanitized_fields, cleaned), greeting_settings.max_render_bytes)
+    return to_jpeg(render(t.canvas_width, t.canvas_height, background, fields, cleaned), greeting_settings.max_render_bytes)
 
 

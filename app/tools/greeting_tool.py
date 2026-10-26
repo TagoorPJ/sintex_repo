@@ -181,7 +181,7 @@ async def generate_festival_greeting(
     logger.info(f"[GREETING TOOL] festival={festival} | enterprise={enterprise} | name={name} | number={number} | language={language}")
 
     from greeting_renderer.layout import clean_text, to_title_camel_case
-    clean_enterprise = clean_text(enterprise).upper()
+    clean_enterprise = clean_text(enterprise)
     clean_name = to_title_camel_case(name)
 
     if not clean_enterprise or clean_enterprise.lower() in ("none", "null", "n/a", "undefined", ""):

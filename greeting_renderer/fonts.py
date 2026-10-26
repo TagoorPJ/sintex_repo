@@ -14,17 +14,31 @@ from pathlib import Path
 from PIL import ImageFont, features
 
 _default_local_fonts = Path(__file__).resolve().parent / "fonts"
+_frontend_public_fonts = Path(__file__).resolve().parent.parent / "frontend" / "public" / "fonts"
 _fallback_template_fonts = Path("D:/sintex_template_feature/renderer/greeting_renderer/fonts")
 
+# Auto-populate local fonts from frontend/public/fonts if missing
+if not (_default_local_fonts.exists() and any(_default_local_fonts.glob("*.ttf"))):
+    if _frontend_public_fonts.exists() and any(_frontend_public_fonts.glob("*.ttf")):
+        try:
+            _default_local_fonts.mkdir(parents=True, exist_ok=True)
+            import shutil
+            for font_file in _frontend_public_fonts.glob("*.ttf"):
+                shutil.copy2(font_file, _default_local_fonts / font_file.name)
+        except Exception:
+            pass
+
 _fonts_dir_env = os.getenv("GREETING_FONTS_DIR")
-if _fonts_dir_env:
+if _fonts_dir_env and Path(_fonts_dir_env).exists() and any(Path(_fonts_dir_env).glob("*.ttf")):
     FONTS_DIR = Path(_fonts_dir_env)
 elif _default_local_fonts.exists() and any(_default_local_fonts.glob("*.ttf")):
     FONTS_DIR = _default_local_fonts
+elif _frontend_public_fonts.exists() and any(_frontend_public_fonts.glob("*.ttf")):
+    FONTS_DIR = _frontend_public_fonts
 elif _fallback_template_fonts.exists():
     FONTS_DIR = _fallback_template_fonts
 else:
-    FONTS_DIR = _default_local_fonts
+    FONTS_DIR = _frontend_public_fonts
 
 _GF = "https://raw.githubusercontent.com/google/fonts/main/ofl"
 _FS = "https://cdn.jsdelivr.net/fontsource/fonts"
@@ -93,10 +107,26 @@ def nearest_weight(family: FontFamily, weight: int) -> int:
 
 @lru_cache(maxsize=512)
 def load_font(family_id: str, weight: int, size_px: int) -> ImageFont.FreeTypeFont:
-    family = FAMILIES[family_id]
-    path = FONTS_DIR / family.file_name(nearest_weight(family, weight))
+    family = FAMILIES.get(family_id) or FAMILIES[DEFAULT_FAMILY]
+    resolved_weight = nearest_weight(family, weight)
+    file_name = family.file_name(resolved_weight)
+    path = FONTS_DIR / file_name
+
     if not path.exists():
-        raise FileNotFoundError(f"Font file missing: {path}. Run `python -m greeting_renderer.download_fonts` or set GREETING_FONTS_DIR.")
+        if _frontend_public_fonts.exists() and (_frontend_public_fonts / file_name).exists():
+            path = _frontend_public_fonts / file_name
+        elif _default_local_fonts.exists() and (_default_local_fonts / file_name).exists():
+            path = _default_local_fonts / file_name
+        else:
+            fallback_fam = FAMILIES[DEFAULT_FAMILY]
+            fallback_file = fallback_fam.file_name(nearest_weight(fallback_fam, weight))
+            if (FONTS_DIR / fallback_file).exists():
+                path = FONTS_DIR / fallback_file
+            elif (_frontend_public_fonts / fallback_file).exists():
+                path = _frontend_public_fonts / fallback_file
+            else:
+                raise FileNotFoundError(f"Font file missing: {path}. Run `python -m greeting_renderer.download_fonts` or set GREETING_FONTS_DIR.")
+
     layout = ImageFont.Layout.RAQM if features.check("raqm") else ImageFont.Layout.BASIC
     return ImageFont.truetype(str(path), size=max(1, size_px), layout_engine=layout)
 
