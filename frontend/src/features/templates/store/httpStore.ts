@@ -2,9 +2,21 @@ import axios, { AxiosError } from 'axios';
 import type { Asset, Festival, Template, TemplateInput } from '../model/types';
 import { StoreError, type TemplateStore } from './types';
 
-// client for the greeting service in /backend
+export function getApiBase(): string {
+  if (typeof window !== 'undefined' && (window as any).__ENV__?.API_URL) {
+    return (window as any).__ENV__.API_URL.replace(/\/$/, '');
+  }
+  const envUrl = (import.meta.env.VITE_API_URL as string | undefined)?.replace(/\/$/, '');
+  if (envUrl) return envUrl;
+  if (typeof window !== 'undefined') {
+    const p = window.location.pathname;
+    const idx = p.indexOf('/studio');
+    if (idx > 0) return p.slice(0, idx);
+  }
+  return '';
+}
 
-const API_BASE = (import.meta.env.VITE_API_URL as string | undefined)?.replace(/\/$/, '') ?? '';
+const API_BASE = getApiBase();
 export const AUTH_KEY = 'greeting-admin';
 export const AUTH_EVENT = 'greeting:auth-required';
 

@@ -19,6 +19,20 @@ const queryClient = new QueryClient({
   defaultOptions: { queries: { refetchOnWindowFocus: false, retry: 1 } },
 });
 
+export function getStudioBase(): string {
+  if (typeof window !== 'undefined' && (window as any).__ENV__?.STUDIO_BASE) {
+    return (window as any).__ENV__.STUDIO_BASE.replace(/\/$/, '');
+  }
+  if (typeof window !== 'undefined') {
+    const p = window.location.pathname;
+    const idx = p.indexOf('/studio');
+    if (idx !== -1) {
+      return p.slice(0, idx + '/studio'.length);
+    }
+  }
+  return import.meta.env.BASE_URL.replace(/\/$/, '') || '/';
+}
+
 const router = createBrowserRouter(
   [
     { path: '/', element: <Navigate to="/templates" replace /> },
@@ -30,7 +44,7 @@ const router = createBrowserRouter(
     },
     { path: '*', element: <Navigate to="/templates" replace /> },
   ],
-  { basename: import.meta.env.BASE_URL.replace(/\/$/, '') || '/' },
+  { basename: getStudioBase() },
 );
 
 createRoot(document.getElementById('root')!).render(

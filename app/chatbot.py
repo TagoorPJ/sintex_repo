@@ -296,6 +296,16 @@ IMPORTANT CONTEXT:
 
         state["messages"] = final_messages
 
+        history_count = len(messages) if not force_menu else 0
+        user_turns = sum(1 for m in messages if isinstance(m, HumanMessage)) if not force_menu else 0
+        ai_turns = sum(1 for m in messages if isinstance(m, AIMessage)) if not force_menu else 0
+        tool_turns = sum(1 for m in messages if isinstance(m, ToolMessage)) if not force_menu else 0
+        logger.info(
+            f"[LLM CONTEXT] conv={conv_id} | passing {history_count} history turns "
+            f"(user={user_turns}, assistant={ai_turns}, tool={tool_turns}) | "
+            f"total_messages={len(final_messages)} (including system instructions)"
+        )
+
         try:
             with get_openai_callback() as cb:
                 result = await self.agent.ainvoke({"messages": state["messages"]})

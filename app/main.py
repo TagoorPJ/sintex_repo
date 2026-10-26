@@ -1,15 +1,17 @@
 from __future__ import annotations
 
 import asyncio
+import json
 import os
 import shutil
 from contextlib import asynccontextmanager
 from pathlib import Path
+from urllib.parse import urlparse
 
 from dotenv import load_dotenv
 from fastapi import Depends, FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
+from fastapi.responses import FileResponse, JSONResponse, Response
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
@@ -103,7 +105,40 @@ if FONTS_DIR.exists():
 frontend_dist = Path(__file__).resolve().parent.parent / "frontend" / "dist"
 fallback_dist = Path("D:/sintex_template_feature/frontend/dist")
 studio_path = frontend_dist if frontend_dist.exists() else (fallback_dist if fallback_dist.exists() else None)
+
 if studio_path:
+    @app.get("/studio/env.js", tags=["studio"])
+    async def studio_env_js():
+        """
+        Dynamically generates runtime environment config for Greeting Template Studio
+        from server .env (PUBLIC_BASE_URL).
+        """
+        public_base = (greeting_settings.public_base_url or "").rstrip("/")
+        if public_base:
+            parsed = urlparse(public_base)
+            prefix = parsed.path.rstrip("/")
+            studio_base = f"{prefix}/studio" if prefix else "/studio"
+            api_url = public_base
+        else:
+            studio_base = "/studio"
+            api_url = ""
+
+        content = (
+            f"// Dynamic runtime configuration generated from server .env\n"
+            f"window.__ENV__ = window.__ENV__ || {{}};\n"
+            f"window.__ENV__.API_URL = {json.dumps(api_url)};\n"
+            f"window.__ENV__.STUDIO_BASE = {json.dumps(studio_base)};\n"
+        )
+        return Response(content=content, media_type="application/javascript")
+
+    @app.get("/studio", tags=["studio"])
+    async def studio_root_index():
+        """Directly serve studio index.html to avoid reverse proxy slash-redirect issues."""
+        idx = studio_path / "index.html"
+        if idx.exists():
+            return FileResponse(idx)
+        return JSONResponse(status_code=404, content={"detail": "Studio index not found"})
+
     app.mount("/studio", StaticFiles(directory=studio_path, html=True), name="studio")
 
 # ─── CORS ─────────────────────────────────────────────────────────────────────

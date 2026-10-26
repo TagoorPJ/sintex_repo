@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import type { FontWeight } from './types';
+import { getStudioBase } from '../../../app/env';
 
 // Mirrors renderer/greeting_renderer/fonts.py and uses the same TTFs (public/fonts)
 // so our measurements match the server render.
@@ -22,9 +23,10 @@ export const FONT_FAMILIES: FontFamily[] = [
   { id: 'muktavaani', label: 'Mukta Vaani', category: 'Gujarati fallback', weights: [400, 500, 600, 700], selectable: false },
 ];
 
-const BY_ID = new Map(FONT_FAMILIES.map((f) => [f.id, f]));
 export const DEFAULT_FAMILY = 'poppins';
-const FONT_BASE = `${import.meta.env.BASE_URL}fonts`;
+
+const BY_ID = new Map(FONT_FAMILIES.map((f) => [f.id, f]));
+const FONT_BASE = `${getStudioBase()}/fonts`;
 
 export function getFamily(id: string): FontFamily {
   return BY_ID.get(id) ?? BY_ID.get(DEFAULT_FAMILY)!;
