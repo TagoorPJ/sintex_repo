@@ -364,6 +364,7 @@ async def submit_user_registration(payload: str) -> str:
 
     # ── 6. CALL API ─────────────────────────────────────────────
     api_result = await call_evolve_api(api_payload)
+    is_new_registration = True
 
     if api_result.get("status") == "error":
         api_message = (api_result.get("message") or "").strip()
@@ -373,6 +374,7 @@ async def submit_user_registration(payload: str) -> str:
         # database is missing its member ID. Recover that ID through the
         # validation endpoint instead of leaving the user stuck in registration.
         if "already registered" in api_message.lower():
+            is_new_registration = False
             logger.info(
                 "[REGISTRATION TOOL] Existing Evolve registration detected; "
                 "recovering member ID through validation | mobile=%s",
@@ -457,6 +459,8 @@ async def submit_user_registration(payload: str) -> str:
         return json.dumps({
             "status": "success",
             "user_id": user_id_evolve_generated,
+            "name": name,
+            "registered_via_chatbot": is_new_registration,
             "message": (
                 f"Registration successful!\n"
                 f"Your User ID: {user_id_evolve_generated}\n"
@@ -467,6 +471,8 @@ async def submit_user_registration(payload: str) -> str:
     return json.dumps({
         "status": "success",
         "user_id": user_id_evolve_generated,
+        "name": name,
+        "registered_via_chatbot": is_new_registration,
         "message": (
             f"Registration successful!\n"
             f"Your User ID: {user_id_evolve_generated}\n"

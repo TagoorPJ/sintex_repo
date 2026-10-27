@@ -980,6 +980,8 @@ async def chat_endpoint(
         "conversation_stage": conversation.stage.value,
         "just_registered_now": just_registered_now,
         "user_id_evolve": user.user_id_evolve,
+        "user_name": getattr(user, "name", None),
+        "registered_via_chatbot": getattr(user, "registered_via_chatbot", False),
         "is_session_resumed": is_session_resumed,
         "force_menu": force_menu,
         "force_registration_resume": force_registration_resume,
@@ -1103,11 +1105,26 @@ async def chat_endpoint(
 
     # ── 13. EXTRACT USER_ID FROM TOOL TRACES ─────────────────────
     user_id_from_tool = None
+    user_name_from_tool = None
+    is_chatbot_registered = False
     last_tool_name = None
 
     for trace in tool_traces:
         if trace.get("type") == "tool_call":
             last_tool_name = trace.get("tool_name")
+            tool_args = trace.get("args") or {}
+            if last_tool_name == "submit_user_registration" and not user_name_from_tool:
+                try:
+                    if isinstance(tool_args, str):
+                        tool_args = json.loads(tool_args)
+                    elif isinstance(tool_args, dict) and "payload" in tool_args:
+                        payload_val = tool_args["payload"]
+                        if isinstance(payload_val, str):
+                            payload_val = json.loads(payload_val)
+                        if isinstance(payload_val, dict) and payload_val.get("name"):
+                            user_name_from_tool = str(payload_val.get("name")).strip()
+                except Exception:
+                    pass
 
         elif trace.get("type") == "tool_result":
             output = trace.get("output", {})
@@ -1122,14 +1139,31 @@ async def chat_endpoint(
 
                 if isinstance(output, dict):
                     user_id_from_tool = output.get("user_id")
+                    if output.get("name"):
+                        user_name_from_tool = str(output.get("name")).strip()
+                    if output.get("registered_via_chatbot") is not None:
+                        is_chatbot_registered = bool(output.get("registered_via_chatbot"))
+                    elif user_id_from_tool:
+                        is_chatbot_registered = True
 
                 break
 
-    # ── SAVE USER_ID TO DB ────────────────────────────────────────
+    # ── SAVE USER_ID, NAME, AND REGISTRATION STATUS TO DB ────────
     if user_id_from_tool:
-        user.user_id_evolve = user_id_from_tool
-        user.is_registered = True
-        await db.commit()
+        if is_chatbot_registered:
+            user = await crud.mark_user_registered_via_chatbot(
+                db=db,
+                user_id=user.id,
+                user_id_evolve=user_id_from_tool,
+                name=user_name_from_tool,
+            )
+        else:
+            user.user_id_evolve = user_id_from_tool
+            user.is_registered = True
+            if user_name_from_tool and not user.name:
+                user.name = user_name_from_tool
+            await db.commit()
+            await db.refresh(user)
 
     is_complete = agent_result.get("is_complete", False)
     token_usage = agent_result.get("token_usage", {}) or {}

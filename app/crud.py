@@ -1,4 +1,5 @@
-from typing import Optional, List
+from datetime import datetime, timezone
+from typing import Optional, List, Any
 from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -56,6 +57,9 @@ async def upsert_user(
     mobile_number: str,
     user_id_evolve: Optional[str] = None,
     is_registered: bool = False,
+    name: Optional[str] = None,
+    registered_via_chatbot: Optional[bool] = None,
+    registered_at: Optional[datetime] = None,
 ) -> User:
     user = await get_user_by_mobile(db, mobile_number)
 
@@ -65,20 +69,29 @@ async def upsert_user(
         # mobile validation API before calling this function.
         resolved_user_id = user_id_evolve or user.user_id_evolve
         new_is_registered = bool(resolved_user_id)
+        update_values: dict[str, Any] = {
+            "user_id_evolve": resolved_user_id,
+            "is_registered": new_is_registered,
+        }
+        if name is not None:
+            update_values["name"] = name
+        if registered_via_chatbot is not None:
+            update_values["registered_via_chatbot"] = registered_via_chatbot
+        if registered_at is not None:
+            update_values["registered_at"] = registered_at
+
         await db.execute(
             update(User)
             .where(User.id == user.id)
-            .values(
-                user_id_evolve=resolved_user_id,
-                is_registered=new_is_registered,
-            )
+            .values(**update_values)
         )
         await db.commit()
         await db.refresh(user)
 
         logger.info(
             f"[USER UPSERT] user_id={user.id} user_id_evolve={user.user_id_evolve!r} "
-            f"is_registered={user.is_registered}"
+            f"is_registered={user.is_registered} name={user.name!r} "
+            f"registered_via_chatbot={user.registered_via_chatbot}"
         )
         logger.info("User updated", extra={"user_id": user.id, "mobile": mobile_number})
 
@@ -87,14 +100,70 @@ async def upsert_user(
             mobile_number=mobile_number,
             user_id_evolve=user_id_evolve,
             is_registered=True if user_id_evolve else False,
+            name=name,
+            registered_via_chatbot=bool(registered_via_chatbot) if registered_via_chatbot is not None else False,
+            registered_at=registered_at,
         )
         db.add(user)
         await db.commit()
         await db.refresh(user)
 
-        logger.info("User created", extra={"user_id": user.id, "mobile": mobile_number})
+        logger.info(
+            "User created",
+            extra={
+                "user_id": user.id,
+                "mobile": mobile_number,
+                "user_name": name,
+                "registered_via_chatbot": user.registered_via_chatbot,
+            },
+        )
 
     return user
+
+
+async def mark_user_registered_via_chatbot(
+    db: AsyncSession,
+    user_id: int,
+    user_id_evolve: str,
+    name: Optional[str] = None,
+) -> User:
+    now = datetime.now(timezone.utc)
+    update_values: dict[str, Any] = {
+        "user_id_evolve": user_id_evolve,
+        "is_registered": True,
+        "registered_via_chatbot": True,
+        "registered_at": now,
+    }
+    if name:
+        update_values["name"] = name
+
+    await db.execute(
+        update(User)
+        .where(User.id == user_id)
+        .values(**update_values)
+    )
+    await db.commit()
+    result = await db.execute(select(User).where(User.id == user_id))
+    user = result.scalar_one()
+    logger.info(
+        f"[CHATBOT REGISTRATION] user_id={user.id} mobile={user.mobile_number} "
+        f"name={user.name!r} evolve_id={user_id_evolve} registered_at={now.isoformat()}"
+    )
+    return user
+
+
+async def set_user_name(
+    db: AsyncSession,
+    user_id: int,
+    name: str,
+) -> None:
+    await db.execute(
+        update(User)
+        .where(User.id == user_id)
+        .values(name=name)
+    )
+    await db.commit()
+    logger.info("User name updated", extra={"user_id": user_id, "user_name": name})
 
 
 # ─── CONVERSATION ─────────────────────────────────────────────────────────────

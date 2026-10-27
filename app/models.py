@@ -30,6 +30,9 @@ class User(Base):
     user_id_evolve: Mapped[str | None] = mapped_column(String(100), nullable=True)
     is_registered: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     is_plumber: Mapped[bool | None] = mapped_column(Boolean, nullable=True, default=None)
+    name: Mapped[str | None] = mapped_column(String(150), nullable=True)
+    registered_via_chatbot: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    registered_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=_utcnow, nullable=False

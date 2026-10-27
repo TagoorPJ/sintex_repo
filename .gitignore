@@ -1,5 +1,7 @@
 .env
 env/
+venv/
+sintex_venv/
 
 # Python cache files
 __pycache__/

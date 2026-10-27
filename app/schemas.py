@@ -71,8 +71,11 @@ class ChatResponse(BaseModel):
 class UserSchema(BaseModel):
     id: int
     mobile_number: str
-    user_id_evolve: Optional[str]
-    is_registered: bool
+    user_id_evolve: Optional[str] = None
+    is_registered: bool = False
+    name: Optional[str] = None
+    registered_via_chatbot: bool = False
+    registered_at: Optional[datetime] = None
     created_at: datetime
 
     model_config = {"from_attributes": True}

@@ -10,6 +10,8 @@ from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
+from sqlalchemy import text
+
 from app.api.routes.chat import router as chat_router
 from app.database import Base, engine
 from app.utils.logger import get_logger
@@ -26,6 +28,22 @@ async def lifespan(app: FastAPI):
     logger.info("Starting up — creating DB tables if not exist")
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
+        # Ensure new columns exist on users table for existing databases
+        await conn.execute(
+            text("ALTER TABLE users ADD COLUMN IF NOT EXISTS name VARCHAR(150);")
+        )
+        await conn.execute(
+            text(
+                "ALTER TABLE users ADD COLUMN IF NOT EXISTS registered_via_chatbot "
+                "BOOLEAN NOT NULL DEFAULT FALSE;"
+            )
+        )
+        await conn.execute(
+            text(
+                "ALTER TABLE users ADD COLUMN IF NOT EXISTS registered_at "
+                "TIMESTAMP WITH TIME ZONE;"
+            )
+        )
     logger.info("Database tables ready")
     yield
     logger.info("Shutting down — disposing DB engine")
