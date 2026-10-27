@@ -31,7 +31,11 @@ export function FieldIcon({ field, className }: { field: TextField; className?: 
 // tokens while designing (unless sample text is on), scenario values in preview
 const useValues = () =>
   useEditor((s) =>
-    s.mode === 'edit' && s.canvasText === 'tokens' ? TOKEN_VALUES : s.scenario === 'custom' ? s.custom : SCENARIOS[s.scenario].values,
+    s.mode === 'edit' && s.canvasText === 'tokens'
+      ? TOKEN_VALUES
+      : s.scenario === 'custom'
+        ? s.custom
+        : (SCENARIOS[s.scenario]?.values ?? SCENARIOS.typical.values),
   );
 
 const FieldVisual = memo(function FieldVisual({ field, mode }: { field: TextField; mode: 'edit' | 'preview' }) {
@@ -242,17 +246,34 @@ export function CanvasViewport() {
   useEffect(() => {
     const el = viewport.current;
     if (!el) return;
+    let rafId: number | null = null;
     const update = () => {
+      if (!canvas.width || !canvas.height) return;
       const pad = el.clientWidth < 640 ? 32 : 96;
       // under 1024px the collapsed bottom sheet sits over the canvas, leave room for it
       const sheet = window.innerWidth < 1024 ? 56 : 0;
-      const s = Math.min((el.clientWidth - pad) / canvas.width, (el.clientHeight - pad - sheet) / canvas.height);
-      useEditor.getState().set({ fitScale: Math.max(0.05, Math.min(s, 4)) });
+      const availW = Math.max(0, el.clientWidth - pad);
+      const availH = Math.max(0, el.clientHeight - pad - sheet);
+      if (availW === 0 || availH === 0) return;
+      const s = Math.min(availW / canvas.width, availH / canvas.height);
+      const next = Math.max(0.05, Math.min(s, 4));
+      const current = useEditor.getState().fitScale;
+      // Guard against ResizeObserver ping-pong loops
+      if (Math.abs(current - next) > 0.005) {
+        useEditor.getState().set({ fitScale: next });
+      }
+    };
+    const onResize = () => {
+      if (rafId !== null) cancelAnimationFrame(rafId);
+      rafId = requestAnimationFrame(update);
     };
     update();
-    const ro = new ResizeObserver(update);
+    const ro = new ResizeObserver(onResize);
     ro.observe(el);
-    return () => ro.disconnect();
+    return () => {
+      if (rafId !== null) cancelAnimationFrame(rafId);
+      ro.disconnect();
+    };
   }, [canvas.width, canvas.height]);
 
   // ctrl/cmd + wheel zooms, trackpad pinch comes through the same way

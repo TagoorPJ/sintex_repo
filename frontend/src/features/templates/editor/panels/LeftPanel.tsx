@@ -17,7 +17,8 @@ const formatBytes = (n: number) => (n > 1024 * 1024 ? `${(n / 1024 / 1024).toFix
 
 function PaletteItem({ variable, disabled }: { variable: VariableKey; disabled: boolean }) {
   const placed = useDoc((s) => s.doc.fields.find((f) => f.kind === 'variable' && f.variable === variable));
-  const selected = useEditor((s) => s.selectedId === placed?.id && !!placed);
+  const selectedId = useEditor((s) => s.selectedId);
+  const selected = !!placed && selectedId === placed.id;
   const meta = VARIABLES[variable];
   const Icon = VARIABLE_ICON[variable];
   return (

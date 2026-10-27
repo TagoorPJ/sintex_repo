@@ -28,8 +28,8 @@ export const DEFAULT_FAMILY = 'poppins';
 const BY_ID = new Map(FONT_FAMILIES.map((f) => [f.id, f]));
 const FONT_BASE = `${getStudioBase()}/fonts`;
 
-export function getFamily(id: string): FontFamily {
-  return BY_ID.get(id) ?? BY_ID.get(DEFAULT_FAMILY)!;
+export function getFamily(id?: string | null): FontFamily {
+  return (id ? BY_ID.get(id) : undefined) ?? BY_ID.get(DEFAULT_FAMILY)!;
 }
 
 export const cssFamily = (id: string) => `"tpl-${id}"`;

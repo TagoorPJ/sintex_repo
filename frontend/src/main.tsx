@@ -33,16 +33,25 @@ export function getStudioBase(): string {
   return import.meta.env.BASE_URL.replace(/\/$/, '') || '/';
 }
 
+import { RouteErrorBoundary } from './components/RouteErrorBoundary';
+
 const router = createBrowserRouter(
   [
-    { path: '/', element: <Navigate to="/templates" replace /> },
-    { path: '/templates', element: <TemplatesPage /> },
     {
-      path: '/templates/:id',
-      // editor is the heavy bit, keep it out of the dashboard bundle
-      lazy: async () => ({ Component: (await import('./features/templates/editor/EditorPage')).EditorPage }),
+      path: '/',
+      errorElement: <RouteErrorBoundary />,
+      children: [
+        { index: true, element: <Navigate to="/templates" replace /> },
+        { path: 'templates', element: <TemplatesPage /> },
+        {
+          path: 'templates/:id',
+          lazy: async () => ({
+            Component: (await import('./features/templates/editor/EditorPage')).EditorPage,
+          }),
+        },
+        { path: '*', element: <Navigate to="/templates" replace /> },
+      ],
     },
-    { path: '*', element: <Navigate to="/templates" replace /> },
   ],
   { basename: getStudioBase() },
 );

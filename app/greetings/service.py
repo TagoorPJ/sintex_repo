@@ -217,7 +217,7 @@ async def seed_festivals(db: AsyncSession) -> None:
             "variable": "enterprise",
             "label": "Enterprise / Firm Name",
             "box": {"x": 180, "y": 1255, "width": 720},
-            "style": {"fontFamily": "poppins", "fontWeight": 700, "fontSize": 44, "color": "#8B0000", "align": "center", "shadow": False, "textCase": "upper"},
+            "style": {"fontFamily": "poppins", "fontWeight": 700, "fontSize": 44, "color": "#8B0000", "align": "center", "shadow": False, "textCase": "upper", "lineHeight": 1.2, "letterSpacing": 0},
             "fit": {"minFontSize": 24, "maxLines": 1},
             "whenEmpty": {"mode": "hide", "text": ""}
         },
@@ -227,7 +227,7 @@ async def seed_festivals(db: AsyncSession) -> None:
             "variable": "name",
             "label": "User Name",
             "box": {"x": 180, "y": 1325, "width": 720},
-            "style": {"fontFamily": "poppins", "fontWeight": 600, "fontSize": 36, "color": "#1A1A1A", "align": "center", "shadow": False, "textCase": "title"},
+            "style": {"fontFamily": "poppins", "fontWeight": 600, "fontSize": 36, "color": "#1A1A1A", "align": "center", "shadow": False, "textCase": "title", "lineHeight": 1.2, "letterSpacing": 0},
             "fit": {"minFontSize": 20, "maxLines": 1},
             "whenEmpty": {"mode": "hide", "text": ""}
         },
@@ -237,7 +237,7 @@ async def seed_festivals(db: AsyncSession) -> None:
             "variable": "number",
             "label": "Mobile Number",
             "box": {"x": 180, "y": 1390, "width": 720},
-            "style": {"fontFamily": "poppins", "fontWeight": 500, "fontSize": 26, "color": "#4B5563", "align": "center", "shadow": False},
+            "style": {"fontFamily": "poppins", "fontWeight": 500, "fontSize": 26, "color": "#4B5563", "align": "center", "shadow": False, "textCase": "none", "lineHeight": 1.2, "letterSpacing": 0},
             "fit": {"minFontSize": 18, "maxLines": 1},
             "whenEmpty": {"mode": "hide", "text": ""}
         }
@@ -321,7 +321,7 @@ def render_template(t: Template, values: dict[str, str | None]) -> bytes:
                 "variable": "enterprise",
                 "label": "Enterprise / Firm Name",
                 "box": {"x": 180, "y": firm_y, "width": 720},
-                "style": {"fontFamily": "poppins", "fontWeight": 700, "fontSize": firm_size, "color": "#8B0000", "align": "center", "shadow": False, "textCase": "upper"},
+                "style": {"fontFamily": "poppins", "fontWeight": 700, "fontSize": firm_size, "color": "#8B0000", "align": "center", "shadow": False, "textCase": "upper", "lineHeight": 1.2, "letterSpacing": 0},
                 "fit": {"minFontSize": 24, "maxLines": 1},
                 "whenEmpty": {"mode": "hide", "text": ""}
             },
@@ -331,7 +331,7 @@ def render_template(t: Template, values: dict[str, str | None]) -> bytes:
                 "variable": "name",
                 "label": "User Name",
                 "box": {"x": 180, "y": name_y, "width": 720},
-                "style": {"fontFamily": "poppins", "fontWeight": 600, "fontSize": name_size, "color": "#1A1A1A", "align": "center", "shadow": False, "textCase": "title"},
+                "style": {"fontFamily": "poppins", "fontWeight": 600, "fontSize": name_size, "color": "#1A1A1A", "align": "center", "shadow": False, "textCase": "title", "lineHeight": 1.2, "letterSpacing": 0},
                 "fit": {"minFontSize": 20, "maxLines": 1},
                 "whenEmpty": {"mode": "hide", "text": ""}
             },
@@ -343,7 +343,7 @@ def render_template(t: Template, values: dict[str, str | None]) -> bytes:
                 "variable": "number",
                 "label": "Mobile Number",
                 "box": {"x": 180, "y": phone_y, "width": 720},
-                "style": {"fontFamily": "poppins", "fontWeight": 500, "fontSize": phone_size, "color": "#4B5563", "align": "center", "shadow": False},
+                "style": {"fontFamily": "poppins", "fontWeight": 500, "fontSize": phone_size, "color": "#4B5563", "align": "center", "shadow": False, "textCase": "none", "lineHeight": 1.2, "letterSpacing": 0},
                 "fit": {"minFontSize": 18, "maxLines": 1},
                 "whenEmpty": {"mode": "hide", "text": ""}
             })

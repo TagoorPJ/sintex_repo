@@ -49,8 +49,47 @@ interface DocState {
 
 export const json = (d: Doc) => JSON.stringify(d);
 
+export function normalizeField(f: TextField): TextField {
+  return {
+    ...f,
+    box: {
+      x: Number(f.box?.x ?? 0),
+      y: Number(f.box?.y ?? 0),
+      width: Math.max(1, Number(f.box?.width ?? 200)),
+    },
+    style: {
+      fontFamily: f.style?.fontFamily ?? 'poppins',
+      fontWeight: f.style?.fontWeight ?? 500,
+      fontSize: Number(f.style?.fontSize ?? 36),
+      color: f.style?.color ?? '#FFFFFF',
+      align: f.style?.align ?? 'center',
+      letterSpacing: Number(f.style?.letterSpacing ?? 0),
+      lineHeight: Number(f.style?.lineHeight ?? 1.2),
+      textCase: f.style?.textCase ?? 'none',
+      shadow: Boolean(f.style?.shadow),
+    },
+    fit: {
+      minFontSize: Number(f.fit?.minFontSize ?? 18),
+      maxLines: (f.fit?.maxLines ?? 1) as 1 | 2,
+    },
+    whenEmpty: {
+      mode: f.whenEmpty?.mode ?? 'hide',
+      text: f.whenEmpty?.text ?? '',
+    },
+  };
+}
+
 export function docFromTemplate(t: Template): Doc {
-  return { name: t.name, festivalId: t.festivalId, canvas: t.canvas, background: t.background, fields: t.fields };
+  return {
+    name: t.name,
+    festivalId: t.festivalId,
+    canvas: {
+      width: Number(t.canvas?.width ?? 1080),
+      height: Number(t.canvas?.height ?? 1620),
+    },
+    background: t.background,
+    fields: (t.fields ?? []).map(normalizeField),
+  };
 }
 
 export const useDoc = create<DocState>((set, get) => ({

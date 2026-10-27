@@ -8,6 +8,7 @@ import { cn } from '@/lib/cn';
 import { useEditor } from '../state';
 
 const PRESETS = ['#FFFFFF', '#1F1F1F', '#D4A843', '#7A1F1F', '#0F5132', '#2D2B7E'];
+const EMPTY_PALETTE: string[] = [];
 
 interface EyeDropperResult {
   sRGBHex: string;
@@ -33,7 +34,8 @@ function Swatch({ color, selected, onPick }: { color: string; selected: boolean;
 
 export function ColorField({ value, onChange, label = 'Color' }: { value: string; onChange: (hex: string, final: boolean) => void; label?: string }) {
   const id = useId();
-  const palette = useEditor((s) => s.analysis?.palette ?? []);
+  const analysisPalette = useEditor((s) => s.analysis?.palette);
+  const palette = analysisPalette ?? EMPTY_PALETTE;
   const pick = (c: string) => onChange(c.toUpperCase(), true);
   const eyedropper = typeof window !== 'undefined' && !!window.EyeDropper;
 

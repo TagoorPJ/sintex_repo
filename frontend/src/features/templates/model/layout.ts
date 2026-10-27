@@ -65,7 +65,12 @@ export interface TextLayout {
   lineHeightPx: number;
 }
 
-export const boxHeight = (style: TextStyle, maxLines: number) => style.fontSize * style.lineHeight * maxLines;
+export const boxHeight = (style: Partial<TextStyle>, maxLines: number = 1) => {
+  const fs = Number(style?.fontSize) || 36;
+  const lh = Number(style?.lineHeight) || 1.2;
+  const ml = Math.max(1, maxLines || 1);
+  return fs * lh * ml;
+};
 
 const pyRound = (n: number) => {
   // python round() does banker's rounding, copy it so sizes match
@@ -74,11 +79,21 @@ const pyRound = (n: number) => {
 };
 
 export function layoutText(text: string, f: TextField, measure: Measure = measureText): TextLayout {
-  const { style, fit } = f;
+  const style = {
+    ...f.style,
+    fontSize: Number(f.style?.fontSize) || 36,
+    lineHeight: Number(f.style?.lineHeight) || 1.2,
+    letterSpacing: Number(f.style?.letterSpacing) || 0,
+    textCase: f.style?.textCase ?? 'none',
+  };
+  const fit = {
+    minFontSize: Number(f.fit?.minFontSize) || 18,
+    maxLines: (f.fit?.maxLines ?? 1) as 1 | 2,
+  };
   const family = resolveFamily(style.fontFamily, text);
   const weight = nearestWeight(family, style.fontWeight);
   const ls = isIndic(text) ? 0 : style.letterSpacing;
-  const width = f.box.width;
+  const width = Math.max(1, Number(f.box?.width) || 200);
   const base = Math.max(1, pyRound(style.fontSize));
   const minimum = Math.max(1, Math.min(base, pyRound(fit.minFontSize)));
   const len = (s: string) => Array.from(s).length;

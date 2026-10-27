@@ -73,7 +73,37 @@ function fixAsset(a: Asset): Asset {
 
 function fixTemplate(t: Template & { festivalLabel?: string | null }): Template {
   const { festivalLabel: _label, ...rest } = t;
-  return { ...rest, background: t.background ? fixAsset(t.background) : null };
+  return {
+    ...rest,
+    background: t.background ? fixAsset(t.background) : null,
+    fields: (t.fields ?? []).map((f: any) => ({
+      ...f,
+      box: {
+        x: Number(f.box?.x ?? 0),
+        y: Number(f.box?.y ?? 0),
+        width: Math.max(1, Number(f.box?.width ?? 200)),
+      },
+      style: {
+        fontFamily: f.style?.fontFamily ?? 'poppins',
+        fontWeight: f.style?.fontWeight ?? 500,
+        fontSize: Number(f.style?.fontSize ?? 36),
+        color: f.style?.color ?? '#FFFFFF',
+        align: f.style?.align ?? 'center',
+        letterSpacing: Number(f.style?.letterSpacing ?? 0),
+        lineHeight: Number(f.style?.lineHeight ?? 1.2),
+        textCase: f.style?.textCase ?? 'none',
+        shadow: Boolean(f.style?.shadow),
+      },
+      fit: {
+        minFontSize: Number(f.fit?.minFontSize ?? 18),
+        maxLines: (f.fit?.maxLines ?? 1) as 1 | 2,
+      },
+      whenEmpty: {
+        mode: f.whenEmpty?.mode ?? 'hide',
+        text: f.whenEmpty?.text ?? '',
+      },
+    })),
+  };
 }
 
 export const httpStore: TemplateStore = {
