@@ -48,6 +48,41 @@ def _format_history_payload(history_rows: list) -> list[dict[str, Any]]:
     ]
 
 
+def _filter_history_by_session_timeout(
+    history_rows: list,
+    timeout_minutes: int = 5,
+) -> list:
+    """
+    Retain only messages belonging to the current active session.
+    If an inactivity gap >= timeout_minutes exists between any two consecutive
+    messages in the retrieved history, any message prior to the latest gap is
+    discarded so the LLM context never leaks previous expired sessions.
+    """
+    if not history_rows or len(history_rows) <= 1:
+        return history_rows
+
+    cutoff_index = 0
+    timeout_delta = timedelta(minutes=timeout_minutes)
+
+    for i in range(1, len(history_rows)):
+        prev_msg = history_rows[i - 1]
+        curr_msg = history_rows[i]
+
+        prev_time = getattr(prev_msg, "created_at", None)
+        curr_time = getattr(curr_msg, "created_at", None)
+
+        if prev_time and curr_time:
+            if prev_time.tzinfo is None:
+                prev_time = prev_time.replace(tzinfo=timezone.utc)
+            if curr_time.tzinfo is None:
+                curr_time = curr_time.replace(tzinfo=timezone.utc)
+
+            if (curr_time - prev_time) >= timeout_delta:
+                cutoff_index = i
+
+    return history_rows[cutoff_index:]
+
+
 def _log_user_msg(conv_id: int, message: str) -> None:
     logger.info(
         f"\n{'─'*60}\n"
@@ -632,12 +667,24 @@ async def chat_endpoint(
     history_rows = await crud.get_recent_messages(
         db=db,
         conversation_id=conversation.id,
-        limit=25,
+        limit=50,
     )
+
+    # Retain only messages from the active session (after the last 5-min inactivity gap)
+    active_history_rows = _filter_history_by_session_timeout(
+        history_rows,
+        timeout_minutes=TIMEOUT_MINUTES,
+    )
+    if len(active_history_rows) < len(history_rows):
+        logger.info(
+            f"{log_ctx} [SESSION HISTORY FILTER] Trimmed {len(history_rows) - len(active_history_rows)} "
+            f"stale messages from prior session(s); retained {len(active_history_rows)} messages "
+            f"from current session (cutoff gap >= {TIMEOUT_MINUTES}m)"
+        )
 
     history = [
         {"sender": row.sender, "message": row.message}
-        for row in history_rows
+        for row in active_history_rows
         if row.sender != "user" or row.message != request.message
     ]
 
@@ -837,7 +884,25 @@ async def chat_endpoint(
         str.maketrans("०१२३४५६७८९", "0123456789")
     )
     upload_entry_intent: str
-    if (
+
+    # If no upload flow is active and the user is answering a festival greeting prompt,
+    # bypass upload flow entirely unless they explicitly asked to upload a purchase.
+    is_greeting_reply = False
+    if not current_upload_stage and last_assistant_message:
+        last_lower = last_assistant_message.lower()
+        if any(kw in last_lower for kw in ("greeting card", "festival", "personalized card", "shop / business name", "your firm name", "your name", "dussehra", "dassehra", "diwali", "pongal", "ganesh", "त्यौहार", "सण", "refine", "रिफाइन")):
+            upload_explicit_kws = ("upload purchase", "purchase upload", "scan qr", "create claim", "claim status", "खरीद अपलोड", "बिल अपलोड")
+            if not any(k in (user_message or "").lower() for k in upload_explicit_kws):
+                is_greeting_reply = True
+
+    if is_greeting_reply:
+        upload_entry_intent = "none"
+        if current_upload_stage:
+            current_upload_stage = ""
+            upload_state_json_in = ""
+            await crud.set_match_results_json(db=db, conversation_id=conversation.id, value=None)
+        logger.info(f"{log_ctx} [UPLOAD INTENT] user is answering greeting prompt -> bypass upload flow")
+    elif (
         not current_upload_stage
         and _msg_stripped == "2"
         and upload_flow_handler._is_main_menu_text(last_assistant_message or "")

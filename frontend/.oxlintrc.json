@@ -1,0 +1,26 @@
+{
+  "$schema": "./node_modules/oxlint/configuration_schema.json",
+  // oxlint, not ESLint - typescript-eslint doesn't work with TS 7 (no JS API)
+  "plugins": ["typescript", "react", "jsx-a11y", "oxc", "unicorn", "vitest"],
+  "env": { "browser": true, "es2024": true },
+  "categories": {
+    "correctness": "error",
+    "suspicious": "warn"
+  },
+  "rules": {
+    "react/rules-of-hooks": "error",
+    "react/exhaustive-deps": "warn",
+    "react/react-in-jsx-scope": "off",
+    "no-unused-vars": ["error", { "argsIgnorePattern": "^_", "varsIgnorePattern": "^_", "ignoreRestSiblings": true }],
+
+    // custom widgets (segmented radios, canvas fields, progress bars) use ARIA roles on purpose
+    "jsx-a11y/prefer-tag-over-role": "off",
+    // autofocus is intentional on the key field, inline rename and the add festival dialog
+    "jsx-a11y/no-autofocus": "off",
+    // style only. we sort/reverse fresh copies and small inline helpers read fine
+    "unicorn/no-array-sort": "off",
+    "unicorn/no-array-reverse": "off",
+    "unicorn/consistent-function-scoping": "off"
+  },
+  "ignorePatterns": ["dist", "node_modules", "public"]
+}

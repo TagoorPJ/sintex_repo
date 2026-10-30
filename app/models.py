@@ -1,12 +1,12 @@
 from datetime import date, datetime, timezone
+import uuid
 from sqlalchemy import (
     BigInteger, Boolean, Date, DateTime, Float, ForeignKey, Integer,
-    String, Text, Enum as SAEnum, UniqueConstraint
+    String, Text, Enum as SAEnum, UniqueConstraint, JSON, true
 )
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.database import Base
 import enum
-from sqlalchemy import Text  # add import if not present
 
 def _utcnow() -> datetime:
     return datetime.now(timezone.utc)
@@ -215,3 +215,63 @@ class ChatbotFeatureUsageEvent(Base):
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=_utcnow, nullable=False
     )
+
+
+# ── Festive Greeting Template Models ──────────────────────────────────────────
+
+def _uuid() -> str:
+    return uuid.uuid4().hex
+
+
+class Festival(Base):
+    __tablename__ = "festivals"
+
+    id: Mapped[str] = mapped_column(String(64), primary_key=True)  # slug like "diwali"
+    label: Mapped[str] = mapped_column(String(80))
+    aliases: Mapped[list[str]] = mapped_column(JSON, default=list)
+    next_date: Mapped[str | None] = mapped_column(String(10), nullable=True)  # YYYY-MM-DD
+    sort_order: Mapped[int] = mapped_column(Integer, default=100)
+
+
+class Asset(Base):
+    __tablename__ = "assets"
+
+    id: Mapped[str] = mapped_column(String(32), primary_key=True, default=_uuid)
+    file_name: Mapped[str] = mapped_column(String(255))
+    mime_type: Mapped[str] = mapped_column(String(32))
+    bytes: Mapped[int] = mapped_column(Integer)
+    width: Mapped[int] = mapped_column(Integer)
+    height: Mapped[int] = mapped_column(Integer)
+    storage_key: Mapped[str] = mapped_column(String(255))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utcnow)
+
+
+class Template(Base):
+    __tablename__ = "templates"
+
+    id: Mapped[str] = mapped_column(String(32), primary_key=True, default=_uuid)
+    name: Mapped[str] = mapped_column(String(80))
+    festival_id: Mapped[str | None] = mapped_column(ForeignKey("festivals.id"), nullable=True, index=True)
+    # admin on/off toggle. only one active template per festival, see claim_festival
+    is_active: Mapped[bool] = mapped_column(Boolean, default=True, server_default=true())
+    version: Mapped[int] = mapped_column(Integer, default=1)
+    canvas_width: Mapped[int] = mapped_column(Integer, default=1080)
+    canvas_height: Mapped[int] = mapped_column(Integer, default=1620)
+    background_asset_id: Mapped[str | None] = mapped_column(ForeignKey("assets.id"), nullable=True)
+    # list of schemas.TextField dumped to JSON
+    fields: Mapped[list[dict]] = mapped_column(JSON, default=list)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utcnow)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utcnow, onupdate=_utcnow)
+    updated_by: Mapped[str | None] = mapped_column(String(120), nullable=True)
+
+    festival: Mapped[Festival | None] = relationship(lazy="joined")
+    background: Mapped[Asset | None] = relationship(lazy="joined")
+
+    @property
+    def is_ready(self) -> bool:
+        return bool(self.festival_id and any(f.get("kind") == "variable" for f in self.fields or []))
+
+    @property
+    def is_live(self) -> bool:
+        """switched on and complete, so the chatbot can use it"""
+        return bool(self.is_active and self.is_ready)

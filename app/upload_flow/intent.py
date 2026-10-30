@@ -139,6 +139,17 @@ async def classify_upload_intent(
         # logic decide (this handler does not interpret main-menu picks).
         return "none"
 
+    # ───── Greeting / Registration context guard ─────
+    # When no upload flow is active, if the bot just asked the user for greeting card details,
+    # firm name, or registration info, do NOT let the upload flow hijack the answer.
+    if not current_stage and last_assistant_message:
+        last_lower = last_assistant_message.lower()
+        if any(kw in last_lower for kw in ("greeting card", "festival", "personalized card", "shop / business name", "your firm name", "your name", "dussehra", "dassehra", "diwali", "pongal", "ganesh", "त्यौहार", "सण", "refine", "रिफाइन")):
+            upload_explicit_kws = ("upload purchase", "purchase upload", "scan qr", "create claim", "claim status", "खरीद अपलोड", "बिल अपलोड")
+            if not any(k in msg.lower() for k in upload_explicit_kws):
+                logger.info(f"[upload_intent] user is answering greeting prompt (msg={msg!r}) -> returning 'none'")
+                return "none"
+
     # ───── LLM path: free-form text ─────
     system_prompt = _build_system_prompt(
         current_stage=current_stage,
@@ -311,9 +322,11 @@ CURRENT STAGE: {current_stage or '<no flow active>'}
 RULES
 =====
 - Always pick exactly one label from the list above.
+- Business names, firm names, shop names, or personal names (e.g. "deepu trades", "shree traders", "rajesh plumbing", "tagoor jayamangala", "om sai enterprise") are NEVER 'open_submenu'. When no flow is active, firm names or answers to greetings MUST return 'none'.
+- Words like "trades", "traders", "trading", "enterprises", "store", "hardware", "agency", "sanitary" are business entity suffixes, NOT requests to upload purchases.
+- 'open_submenu' should ONLY be returned if the user explicitly says they want to upload a purchase, upload a bill, add an invoice, or open the upload purchase menu (e.g. "upload purchase", "purchase upload", "bill upload karna hai", "khareed upload").
 - If the user asks for QR / claim / status SPECIFICALLY by name, use
   start_qr / start_claim / start_status — do NOT use open_submenu.
-- If the user is generic about uploading a purchase, use open_submenu.
 - Mid-flow, prefer 'continue' over 'none' or 'open_submenu'.
 - If the user asks to leave or switch to a different feature, use 'exit'.
 - 'start_claim' means a PURCHASE CLAIM (uploading a bill/QR for rewards).

@@ -1,0 +1,21 @@
+#	Question Type	Real Examples from PDF	What the Agent Needs
+1	Single Tank Deep Dive	• "What are the dimensions of Sintex Pure 1000L?"
+• "What is the SKU code for Sintex Eterno 750L?"
+• "What is the wall thickness and lid type of Sintex Trupuf?"	Exact dimensions (height, diameter, hatch), SKU code, and model-specific mechanics.
+2	Group / Multi-Tank Filtering	• "Which tanks have at least 10 years warranty and anti-bacterial features?"
+• "Show me all tanks made with blow moulding."
+• "Which tanks come in yellow or green?"	Ability to filter across all tanks simultaneously without loading every tank's full spec sheet.
+3	Head-to-Head Comparison	• "What is the difference between Sintex Pure and Sintex Pure+?"
+• "Compare Sintex Neo vs Sintex Reno."
+• "How does Tatva compare to Trupuf for weather protection?"	Side-by-side comparison of warranty, technology (PUF vs ARPS), lid design, and pricing tier.
+4	Constraint / Capacity Recommendation	• "I have a space of height under 1300 mm and need 1000L storage. Which tank fits?"
+• "I want a tank for my bathroom loft/ceiling space. What should I get?"	Matching user physical constraints (space, loft, overhead) against capacity tables.
+5	Specialized Commercial & Underground Solutions	• "What is the difference between Sintex Septic Tank and STP?"
+• "Can Sintex underground sump be installed without a retaining wall?"
+• "How many litres can the Community Panel Tank hold?"	Knowledge of BOD reduction (70% for septic vs 90–95% for STP), FRP vs Roto sumps, and panel modularity (up to 16 lakh litres).
+6	Myths, Facts & Cleaning Advice	• "Can I use detergent to wash my water tank?"
+• "Do 6 or 7 layers make a tank stronger?"
+• "Why are Sintex tanks lighter than local brands?"
+• "How does Sintex KleanKit work?"	Exact answers debunking common myths (Page 30 of PDF) and KleanKit 3-step usage (Remove, Rinse, Cleanse).
+7	General Company & Support Inquiries	• "What is the customer care toll-free number or email?"
+• "How can I get a site inspection for community panel tanks?"	Welspun background, toll-free number (1800-121-2764), email, and inspection process.

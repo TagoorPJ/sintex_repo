@@ -27,6 +27,7 @@ from app.tools.claim_status_tool import claim_status_tool
 from app.tools.support_ticket_tool import support_ticket_tool
 from app.tools.sintex_rag_tool import sintex_rag_tool
 from services.sintex_catalog import query_sintex_catalog, query_sintex_pipes, get_sintex_knowledge
+from app.tools.greeting_tool import generate_festival_greeting
 from app.prompt_library.prompt_selector import get_system_prompt
 
 load_dotenv()
@@ -168,6 +169,7 @@ class ChatbotOrchestrator:
             claim_status_tool,
             support_ticket_tool,
             sintex_rag_tool,
+            generate_festival_greeting,
             query_sintex_catalog,
             query_sintex_pipes,
             get_sintex_knowledge,
@@ -297,6 +299,16 @@ IMPORTANT CONTEXT:
             final_messages = [system_message] + messages + [language_enforcement_message]
 
         state["messages"] = final_messages
+
+        history_count = len(messages) if not force_menu else 0
+        user_turns = sum(1 for m in messages if isinstance(m, HumanMessage)) if not force_menu else 0
+        ai_turns = sum(1 for m in messages if isinstance(m, AIMessage)) if not force_menu else 0
+        tool_turns = sum(1 for m in messages if isinstance(m, ToolMessage)) if not force_menu else 0
+        logger.info(
+            f"[LLM CONTEXT] conv={conv_id} | passing {history_count} history turns "
+            f"(user={user_turns}, assistant={ai_turns}, tool={tool_turns}) | "
+            f"total_messages={len(final_messages)} (including system instructions)"
+        )
 
         try:
             with get_openai_callback() as cb:
@@ -504,7 +516,7 @@ def _extract_last_ai_message(messages: List[Any]) -> str:
 
     # Tools whose message field must be shown directly to the user,
     # bypassing the LLM's tendency to paraphrase or summarise.
-    DIRECT_TOOL_RESPONSE_TOOLS = {"reward_statement_tool"}
+    DIRECT_TOOL_RESPONSE_TOOLS = {"reward_statement_tool", "generate_festival_greeting"}
 
     # ── Build tool_call_id → tool_name map so we can identify ToolMessages ──
     tool_call_id_to_name: Dict[str, str] = {}
