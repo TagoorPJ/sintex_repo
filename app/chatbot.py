@@ -26,6 +26,7 @@ from app.tools.create_claim_tool import create_claim_tool
 from app.tools.claim_status_tool import claim_status_tool
 from app.tools.support_ticket_tool import support_ticket_tool
 from app.tools.sintex_rag_tool import sintex_rag_tool
+from services.sintex_catalog import query_sintex_catalog, query_sintex_pipes, get_sintex_knowledge
 from app.prompt_library.prompt_selector import get_system_prompt
 
 load_dotenv()
@@ -167,6 +168,9 @@ class ChatbotOrchestrator:
             claim_status_tool,
             support_ticket_tool,
             sintex_rag_tool,
+            query_sintex_catalog,
+            query_sintex_pipes,
+            get_sintex_knowledge,
         ]
 
         self.checkpointer = MemorySaver()

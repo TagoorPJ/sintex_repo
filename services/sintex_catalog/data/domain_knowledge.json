@@ -1,0 +1,181 @@
+{
+  "company_and_contact": {
+    "brand": "Sintex (Sintex-BAPL Limited)",
+    "parent_company": "Welspun World ($5 billion Indian conglomerate)",
+    "legacy": "Leading water tank brand of India for 50+ years, present in 50+ countries with 30,000+ employees",
+    "range": "200 litres to 16 Lakh litres",
+    "tagline": "SAAF. SAFE. SAHI.",
+    "toll_free_number": "1800-121-2764",
+    "email": "sintex_support@welspun.com",
+    "website": "www.sintexonline.com",
+    "social_handles": {
+      "instagram": "sintex_bapl_limited",
+      "youtube": "sintexBAPLlimited",
+      "facebook": "Sintex BAPL Limited"
+    }
+  },
+  "myths_and_facts": [
+    {
+      "myth": "Local tanks offer exact water storage capacity as promised.",
+      "fact": "Local competitors' tanks provide 10% to 15% less water storage than what they claim. Whereas, Sintex tanks offer exact water storage capacity as promised."
+    },
+    {
+      "myth": "Only virgin (non-recycled) plastic is used in making all water tanks.",
+      "fact": "Competitors' tanks often use recycled plastic, which may contain harmful chemicals like lead and phthalates. Sintex tanks are made from 100% virgin plastic, ensuring total safety."
+    },
+    {
+      "myth": "Competitors' tanks are heavier, so that means they are sturdier too.",
+      "fact": "Local brands add calcium carbonate and fillers to their tanks, making the water hazardous. In contrast, Sintex tanks are designed to be lighter, stronger, and safer using pure food-grade polymer."
+    },
+    {
+      "myth": "The harder the tank, the more durable it is.",
+      "fact": "Overhead tanks must expand and contract with water levels and temperature changes. Rigid tanks can crack easily, but Sintex uses LLDPE, making them more flexible and durable."
+    },
+    {
+      "myth": "Detergent is good enough to clean the water tank.",
+      "fact": "Using detergents for cleaning water tanks can be hazardous due to the chemical residues they leave behind. Switching to Sintex KleanKit helps ensure your water storage tanks are clean and safe for use."
+    },
+    {
+      "myth": "Our competitors make tanks using only food grade plastic.",
+      "fact": "Many competitors use recycled plastic, which may contain fillers, toxins, and carcinogens like phthalates. Sintex tanks, made from food-grade plastic, ensure safe and hygienic water storage."
+    },
+    {
+      "myth": "Our competitors sell tanks that have 4, 5, 6 or even 7 layers. This means they are much stronger.",
+      "fact": "More layers in a tank don't equate to increased strength. Additional layers provide no real benefits and can make the tank unnecessarily rigid, heavy, and prone to cracking."
+    },
+    {
+      "myth": "All non-black tanks of the competitors are UV stabilized like Sintex tanks.",
+      "fact": "Most competitors' non-black tanks lack complete UV protection, leading to algae growth and unhealthy water. In contrast, all Sintex tanks, whether black or non-black, are UV protected."
+    },
+    {
+      "myth": "The lid of a tank does not need UV protection.",
+      "fact": "As the topmost part of a tank, the lid requires UV protection more than any other surface. Competitors' non-black tanks lack UV protection on their lids, while Sintex is the trusted brand in the country to offer complete UV protection for non-black tank lids."
+    },
+    {
+      "myth": "Every black tank is a Sintex tank.",
+      "fact": "Remember the saying, 'All that glitters is not gold'? This applies to Sintex as well. Customers may go to buy a Sintex tank but end up with a competitor's product. All Sintex tanks feature our logo, so customers should ensure they look for it."
+    }
+  ],
+  "kleankit": {
+    "name": "Sintex Kleankit",
+    "description": "A comprehensive cleaning solution designed specifically for water storage tanks of all types",
+    "includes": ["Descaling solution", "Neutralizing solution", "Disinfecting solution"],
+    "benefits": [
+      "Removes hard and sticky dust or scaling layers",
+      "Versatile solution that can be used for both internal and external tank cleaning",
+      "Maintains pH and lead levels, ensuring no adverse effects on water quality",
+      "Leaves zero toxic chemical residues unlike domestic detergents"
+    ],
+    "three_steps": [
+      {"step": 1, "action": "REMOVE", "detail": "Drain tank and remove stubborn slime, sludge, and scale using the descaling solution."},
+      {"step": 2, "action": "RINSE", "detail": "Rinse thoroughly with the neutralizing formula to balance water pH levels."},
+      {"step": 3, "action": "CLEANSE", "detail": "Disinfect and cleanse to eliminate bacteria, pathogens, and odors for safe water storage."}
+    ]
+  },
+  "community_panel_tanks": {
+    "overview": "SMC compression moulded panel tanks customizable up to 16,00,000 litres capacity",
+    "advantages_over_rcc": [
+      "Superior to Concrete / RCC tanks: Lightweight, rust-free, customizable, easy to install, move, and clean",
+      "Hygienic water storage: Cleaner water compared to concrete tanks, with protection from algae growth and leaching",
+      "Designed to last up to 50 years with leak proof operations",
+      "Replaces multiple individual water tanks on a terrace with one single neat panel tank to save valuable space"
+    ],
+    "how_to_order_steps": [
+      "Step 1: Express interest via nearest retailer or scan QR code",
+      "Step 2: Provide your storage tank requirements and capacity needed",
+      "Step 3: Fix site inspection with Sintex team by paying a token advance payment",
+      "Step 4: Post site inspection, receive detailed storage tank recommendation and customized design",
+      "Step 5: Final payment and professional installation by Sintex"
+    ],
+    "prestigious_installations": [
+      "Rashtrapati Bhawan, New Delhi",
+      "Udyog Bhawan, New Delhi",
+      "Leela Business Park, Mumbai (84,000 Litres)"
+    ]
+  },
+  "septic_vs_stp": {
+    "advanced_septic_tanks": {
+      "series": "PWTS & AST Series",
+      "capacities": "800 to 6000 Litres",
+      "bod_reduction": "Reduces Biological Oxygen Demand (BOD) by 70% (normal septic tanks only achieve 40%)",
+      "power_needed": "Zero electricity used (purely biological & passive)",
+      "installation": "Rapid, lightweight, rust/corrosion proof, flexible inlet and outlet"
+    },
+    "packaged_stp": {
+      "capacities": "10 to 650 KLD (Kilo Litres per Day)",
+      "bod_reduction": "Reduces BOD by 90-95% (Inlet BOD 250-300 mg/L down to Outlet BOD < 30 mg/L)",
+      "power_and_maintenance": "Fully automated, saves power, negligible maintenance cost",
+      "reuse": "Treated grey water is completely safe for toilet flushing, landscape irrigation, and cleaning"
+    }
+  },
+  "technologies": {
+    "active_silver_technology": {
+      "name": "Active Silver Technology (4P Advantage)",
+      "benefit": "Unique anti-microbial layer that provides 4P Advantage: Protection against Virus, Bacteria, Fungus & Algae under stored water condition.",
+      "testing_standards": [
+        "Anti-bacterial: ISO 21702, JIS Z 2801 (S. Aureus & E. Coli)",
+        "Anti-viral: JIS Z 2801 (Bacteriophage MS2)",
+        "Anti-fungal: ASTM G 21",
+        "Anti-algae: ASTM G 29"
+      ]
+    },
+    "puf_insulation": {
+      "name": "Polyurethane Foam (PUF) Insulation (Sintex Trupuf)",
+      "benefit": "50mm high-quality PUF insulation with 40 kg/m3 density. Maintains water temperature between 0.5°C in extreme freezing (-20°C) and hot (50°C) climates for 6 continuous hours.",
+      "closure": "Self-locking Bolted Lid with Hexa Bolts."
+    },
+    "arps_technology": {
+      "name": "Additional Reliable Protective Shield (ARPS) (Sintex Tatva)",
+      "benefit": "Protects against extreme summer temperature variations and thermal stress."
+    },
+    "ratloc_technology": {
+      "name": "RATLOC™ Technology / NXT Advantage of Anti-Rodent Technology (Sintex SWRX PRO)",
+      "benefit": "Specialized antirat composition available exclusively in 3-layer SWRX Sintex pipes that deters rodents (rats, squirrels) from gnawing and chewing on plastic pipes, preventing leaks, blockages, and costly plumbing repairs."
+    },
+    "manufacturing_processes": {
+      "roto_moulding": "Rotational moulding creates seamless, multi-layer tanks with uniform wall thickness and high structural strength (e.g. Eterno, Pure, Reno, Hero, Ace, Classic).",
+      "blow_moulding": "Blow moulding creates durable, flexible, and economical tanks with tight dimensional tolerance (e.g. Neo, Smart, Titus)."
+    }
+  },
+  "swrx_pipes_knowledge": {
+    "product": "Sintex SWRX / SWRX PRO UPVC PLUS (Sewerage Waste Rain Water System)",
+    "anti_rodent_protection": "Features RATLOC™ Technology with a specialized anti-rat composition in 3-layer pipes making them unappealing to rodents to eliminate rodent gnawing damage.",
+    "standards": {
+      "pipes": "IS 13592-2013",
+      "fittings": "IS 14735:1999",
+      "bis_range_mm": "40mm to 315mm",
+      "sintex_outer_diameter_range_mm": "75mm to 160mm"
+    },
+    "pipe_types": {
+      "type_a": "Designed specifically for rainwater and ventilation applications (roof vents, DWV Drain-Waste-Vent systems to maintain stable air pressure). Marking text colour: Blue.",
+      "type_b": "Designed for handling soil and waste discharge from sanitary fixtures. Marking text colour: White."
+    },
+    "jointing_systems": {
+      "ringfit": {
+        "type": "Push-fit with integrated groove and PTFE/EPDM rubber rings",
+        "pressure": "Tested up to 0.5 kg/cm²",
+        "thermal_expansion": "Expansion rate is 0.06 mm/m/°C (a 2m pipe expands by 2.4 mm for a 20°C rise). Re-openable joints accommodate movement without leaks."
+      },
+      "selfit": {
+        "type": "Solvent cement jointing with plain and socketed ends",
+        "best_use": "Recommended for concealed drainage and horizontal indoor installations protected from direct sunlight."
+      }
+    },
+    "solvent_cement_skus": {
+      "co_ex_bottles": ["50 ML", "100 ML", "250 ML"],
+      "tins": ["500 ML", "1 L"],
+      "lubricant": ["100 GM", "250 GM", "500 GM"]
+    },
+    "fire_safety": "Non-combustible and inherently resistant to ignition. Self-extinguishes immediately once the heat source is removed.",
+    "environmental_benefit": "uPVC is the least energy-intensive thermoplastic with lowest feedstock energy, 100% recyclable with minimal global resource footprint."
+  },
+  "sintex_pipe_portfolio": {
+    "hot_and_cold_water": "Sintex HotX",
+    "potable_water": "Sintex CoolX",
+    "sewerage_waste_rain_water": "Sintex SWRX / SWRX PRO",
+    "drainage_system": "Sintex GroundX",
+    "agricultural_water": "Sintex AgriX",
+    "recycle_water": "Sintex ReclaimX",
+    "surface_drainage": "Sintex Surface Drainage Water System"
+  }
+}
