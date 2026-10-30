@@ -21,11 +21,21 @@ class SintexCatalogService:
         """
         tank_id = self.repo.resolve_tank_id(tank_name)
         if not tank_id:
+            # Check if this query corresponds to a Sintex pipe product
+            pipe_id = self.repo.resolve_pipe_id(tank_name)
+            if pipe_id:
+                return self.get_pipe_details(pipe_id)
+
+            close_matches = self.repo.get_close_matches(tank_name, limit=3)
+            pipe_matches = self.repo.get_close_pipe_matches(tank_name, limit=2)
+            all_suggestions = list(dict.fromkeys(close_matches + pipe_matches))
             available_names = [t["name"] for t in self.repo.get_all_tanks()]
             return {
                 "status": "not_found",
                 "message": f"Could not find model matching '{tank_name}'.",
-                "available_models": available_names
+                "did_you_mean": all_suggestions,
+                "suggested_models": all_suggestions,
+                "available_models": available_names[:6]
             }
 
         tank = self.repo.get_tank_by_id(tank_id)
@@ -265,15 +275,110 @@ class SintexCatalogService:
             "comparison": models_data
         }
 
+    def get_pipe_details(
+        self,
+        pipe_name: str,
+        pipe_type: Optional[str] = None,
+        joint_type: Optional[str] = None
+    ) -> Dict[str, Any]:
+        """
+        Retrieves full specifications, standards, jointing systems, and highlights for Sintex SWRX pipes.
+        """
+        pipe_id = self.repo.resolve_pipe_id(pipe_name)
+        if not pipe_id:
+            close_matches = self.repo.get_close_pipe_matches(pipe_name, limit=3)
+            all_pipes = [p["name"] for p in self.repo.get_all_pipes()]
+            return {
+                "status": "not_found",
+                "message": f"Could not find pipe model matching '{pipe_name}'.",
+                "did_you_mean": close_matches,
+                "suggested_models": close_matches,
+                "available_models": all_pipes
+            }
+
+        pipe = self.repo.get_pipe_by_id(pipe_id)
+        if not pipe:
+            return {"status": "not_found", "message": f"Pipe data for '{pipe_id}' not found."}
+
+        res = dict(pipe)
+
+        # Filter by Type A vs Type B if specified
+        if pipe_type and "pipe_types" in res:
+            req_type = pipe_type.lower().strip()
+            filtered_types = [
+                pt for pt in res["pipe_types"]
+                if req_type in pt["type"].lower() or req_type in pt["purpose"].lower()
+            ]
+            if filtered_types:
+                res["pipe_types"] = filtered_types
+
+        # Filter connection systems if specified (ringfit vs selfit)
+        if joint_type and "connection_systems" in res:
+            req_joint = joint_type.lower().strip()
+            if "ring" in req_joint:
+                res["focused_connection_system"] = res["connection_systems"].get("ringfit")
+            elif "sol" in req_joint or "self" in req_joint:
+                res["focused_connection_system"] = res["connection_systems"].get("selfit")
+
+        return {"status": "success", "data": res}
+
+    def filter_pipes(
+        self,
+        pipe_type: Optional[str] = None,
+        joint_type: Optional[str] = None,
+        feature: Optional[str] = None
+    ) -> Dict[str, Any]:
+        """
+        Filters Sintex pipe offerings by application, jointing type, or features.
+        """
+        all_pipes = self.repo.get_all_pipes()
+        matches = []
+
+        for p in all_pipes:
+            if pipe_type:
+                req_t = pipe_type.lower().strip()
+                if req_t not in p.get("name", "").lower() and req_t not in p.get("category", "").lower():
+                    # Check internal pipe_types
+                    has_sub = any(req_t in pt["type"].lower() for pt in p.get("pipe_types", []))
+                    if not has_sub:
+                        continue
+
+            if joint_type and "connection_systems" in p:
+                req_j = joint_type.lower().strip()
+                if "ring" in req_j and "ringfit" not in p["connection_systems"]:
+                    continue
+                if ("sol" in req_j or "self" in req_j) and "selfit" not in p["connection_systems"]:
+                    continue
+
+            if feature:
+                req_f = feature.lower().strip()
+                highlights = [h.lower() for h in p.get("key_highlights", [])]
+                if not any(req_f in h for h in highlights):
+                    continue
+
+            matches.append({
+                "id": p["id"],
+                "name": p["name"],
+                "tagline": p.get("tagline"),
+                "category": p.get("category"),
+                "highlights": p.get("key_highlights", [])[:3]
+            })
+
+        return {
+            "status": "success",
+            "count": len(matches),
+            "matching_pipes": matches
+        }
+
     def get_domain_knowledge(self, topic: Optional[str] = None) -> Dict[str, Any]:
         """
-        Retrieves company info, myths & facts, KleanKit, STP/septic, or technologies.
+        Retrieves company info, myths & facts, KleanKit, STP/septic, technologies, or SWRX pipes.
         """
         knowledge = self.repo.get_domain_knowledge()
         if not topic:
             return {"status": "success", "available_topics": list(knowledge.keys()), "data": knowledge}
 
-        topic_clean = topic.lower().strip()
+        topic_clean = topic.lower().strip().replace("-", "_").replace(" ", "_")
         if topic_clean in knowledge:
             return {"status": "success", "topic": topic_clean, "data": knowledge[topic_clean]}
 
@@ -293,7 +398,29 @@ class SintexCatalogService:
             "email": "company_and_contact",
             "tech": "technologies",
             "active_silver": "technologies",
-            "puf": "technologies"
+            "puf": "technologies",
+            "swrx": "swrx_pipes_knowledge",
+            "swrx_pipes": "swrx_pipes_knowledge",
+            "swr": "swrx_pipes_knowledge",
+            "swr_pipe": "swrx_pipes_knowledge",
+            "swr_pipes": "swrx_pipes_knowledge",
+            "pipe": "swrx_pipes_knowledge",
+            "pipes": "swrx_pipes_knowledge",
+            "ratloc": "swrx_pipes_knowledge",
+            "rat_loc": "swrx_pipes_knowledge",
+            "anti_rat": "swrx_pipes_knowledge",
+            "antirat": "swrx_pipes_knowledge",
+            "anti_rodent": "swrx_pipes_knowledge",
+            "type_a": "swrx_pipes_knowledge",
+            "type_b": "swrx_pipes_knowledge",
+            "ringfit": "swrx_pipes_knowledge",
+            "selfit": "swrx_pipes_knowledge",
+            "solfit": "swrx_pipes_knowledge",
+            "solvent_cement": "swrx_pipes_knowledge",
+            "lubricant": "swrx_pipes_knowledge",
+            "pipe_portfolio": "sintex_pipe_portfolio",
+            "pipe_range": "sintex_pipe_portfolio",
+            "pipe_systems": "sintex_pipe_portfolio"
         }
 
         matched_key = topic_map.get(topic_clean)
@@ -305,3 +432,4 @@ class SintexCatalogService:
             "message": f"Topic '{topic}' not found.",
             "available_topics": list(knowledge.keys())
         }
+

@@ -1,0 +1,267 @@
+{
+  "pipes": [
+    {
+      "id": "sintex_swrx",
+      "name": "Sintex SWRX / SWRX PRO",
+      "full_name": "Sintex SWRX™ Sewerage Waste Rain Water System (uPVC / SWRX PRO UPVC PLUS)",
+      "tagline": "Next-Gen Sewerage, Waste Rain Water System",
+      "brand": "Sintex (Sintex-BAPL Limited, A Welspun Company)",
+      "category": "Sewerage, Waste & Rain Water System (SWR)",
+      "material": "High-Quality uPVC (Unplasticized Polyvinyl Chloride)",
+      "construction_types": [
+        "Single layer of high-quality PVC material engineered to resist rodent damage",
+        "SWR PRO 3-Layer Pipe: Outer & inner layers made of UPVC & middle layer made of mineral-reinforced polypropylene with Anti-Rodent property"
+      ],
+      "anti_rodent_technology": {
+        "name": "RATLOC™ Technology / NXT Advantage of Anti-Rodent Technology",
+        "detail": "Specialized antirat composition available exclusively in 3-layer SWRX Sintex pipes that makes them highly unappealing to pests like rats and squirrels. Prevents chewing damage, leaks, blockages, hygiene problems, and system failures in residential, commercial, and industrial settings."
+      },
+      "standards_compliance": {
+        "pipes_standard": "IS 13592-2013",
+        "fittings_standard": "IS 14735:1999",
+        "bis_allowed_sizes_mm": "40mm to 315mm",
+        "outer_diameter_range_mm": "75mm to 160mm",
+        "pressure_type": "Non-pressurized drainage / wastewater discharge systems (Ringfit seal tested up to 0.5 kg/cm²)"
+      },
+      "applications": [
+        "Soil waste management",
+        "Wastewater discharge from bathrooms, kitchens, and sanitary fixtures",
+        "Rainwater harvesting and management",
+        "Roof vents and Drain-Waste-Vent (DWV) systems maintaining stable air pressure in drainage networks",
+        "Residential, commercial, and industrial drainage networks"
+      ],
+      "pipe_types": [
+        {
+          "type": "Type A",
+          "purpose": "Designed specifically for rainwater and ventilation applications (roof vents, DWV systems).",
+          "marking_text_colour": "Blue Color",
+          "sub_types": [
+            {
+              "sub_type": "Ring Fit (Push-Fit)",
+              "text_colour": "Blue",
+              "sizes_mm": "75mm - 160mm",
+              "lengths_available_meters": "1.8m - 6m",
+              "jointing_system": "Rubber Ring (PTFE & EPDM)"
+            },
+            {
+              "sub_type": "Sol Fit (Selfit / Solvent Fit)",
+              "text_colour": "Blue",
+              "sizes_mm": "75mm - 160mm",
+              "lengths_available_meters": "3m - 6m",
+              "jointing_system": "PVC Solvent Cement"
+            }
+          ]
+        },
+        {
+          "type": "Type B",
+          "purpose": "Intended for handling soil and waste discharge.",
+          "marking_text_colour": "White Color",
+          "sub_types": [
+            {
+              "sub_type": "Ring Fit (Push-Fit)",
+              "text_colour": "White",
+              "sizes_mm": "75mm - 110mm",
+              "lengths_available_meters": "3m",
+              "jointing_system": "Rubber Ring (PTFE & EPDM)"
+            },
+            {
+              "sub_type": "Sol Fit (Selfit / Solvent Fit)",
+              "text_colour": "White",
+              "sizes_mm": "75mm - 160mm",
+              "lengths_available_meters": "3m - 6m",
+              "jointing_system": "PVC Solvent Cement"
+            }
+          ]
+        }
+      ],
+      "fittings": [
+        {
+          "type": "Type B Fittings",
+          "sub_types": [
+            {
+              "sub_type": "Ring Fit",
+              "sizes_mm": "75mm - 160mm",
+              "standard": "IS 14735:1999"
+            },
+            {
+              "sub_type": "Sol Fit",
+              "sizes_mm": "75mm - 160mm",
+              "standard": "IS 14735:1999"
+            }
+          ]
+        }
+      ],
+      "connection_systems": {
+        "ringfit": {
+          "system_name": "Ringfit (Push-Fit System)",
+          "description": "Integrated ring in the groove allows fast, easy push-fit installation. The spigot end simply pushes into the socket without any threading or adhesive required.",
+          "sealing_material": "PTFE and EPDM rubber rings ensuring a strong, leak-proof seal",
+          "pressure_capacity": "Handles pressures up to 0.5 kg/cm²",
+          "thermal_expansion_compensation": "Accommodates thermal expansion and contraction; joints can be reopened for adjustments.",
+          "thermal_expansion_rate": "0.06 mm/m/°C (a 2-meter pipe expands by 2.4 mm for a 20°C temperature rise)",
+          "advantages": [
+            "Fast, push-fit assembly with zero adhesive",
+            "Accommodates building movement and thermal expansion",
+            "Re-openable joints for easy inspection and adjustment",
+            "Low installation and maintenance costs"
+          ]
+        },
+        "selfit": {
+          "system_name": "Selfit (Solvent Weld System)",
+          "description": "Selfit pipes feature one plain end and one socketed end with a self-locking design for easy and reliable installation.",
+          "jointing_method": "Joints are bonded with PVC solvent cement, creating a permanent, 100% watertight seal.",
+          "recommended_usage": "Ideal for concealed drainage and recommended for horizontal installations where pipes are not exposed to sunlight, avoiding thermal expansion and contraction issues.",
+          "advantages": [
+            "Permanent, watertight seal",
+            "Self-locking socket design",
+            "Ideal for concealed plumbing and interior horizontal runs"
+          ]
+        }
+      },
+      "solvent_cement_and_lubricants": {
+        "solvent_cement_pvc": {
+          "co_ex_bottle": ["50 ML", "100 ML", "250 ML"],
+          "tin": ["500 ML", "1 L"]
+        },
+        "lubricant": ["100 GM", "250 GM", "500 GM"]
+      },
+      "key_highlights": [
+        "RATLOC™ Anti-Rodent Technology deterring rats & squirrels from chewing pipes",
+        "Unique 3-layer construction (outer/inner UPVC, middle mineral-reinforced polypropylene)",
+        "Compliant with IS 13592-2013 (Pipes) and IS 14735:1999 (Fittings)",
+        "Available in Type A (Rainwater & Vent, Blue text) and Type B (Soil & Waste, White text)",
+        "Dual jointing: Ringfit (PTFE/EPDM push-fit, 0.5 kg/cm²) and Selfit (solvent cement permanent seal)",
+        "Thermal expansion compensation (0.06 mm/m/°C) with re-openable joints in Ringfit",
+        "100% UV stabilized for long-term outdoor sunlight exposure",
+        "Non-combustible & self-extinguishing upon heat source removal",
+        "Corrosion, acid, alkali, chemical, and effluent resistant",
+        "Smooth bore delivering unmatched hydraulic capacity and high flow rates",
+        "Environmentally friendly: Least energy-intensive thermoplastic, 100% recyclable"
+      ],
+      "features_and_benefits": {
+        "environmental_impact": {
+          "title": "Environmental Impact",
+          "details": "uPVC has lower feedstock energy compared to other polymers and common building materials; least energy-intensive of all thermoplastics. Life cycle analysis shows favorable environmental impact, minimized consumption of global resources, and 100% recyclability with zero harmful impact on air, water, or land."
+        },
+        "anti_rat": {
+          "title": "Anti Rat (RATLOC™ Technology)",
+          "details": "Rodent damage is a severe threat to underground and internal drainage. SWRX pipes feature specialized anti-rat composition exclusively in 3-layer pipes making them highly unappealing to pests, stopping gnawing and costly leaks."
+        },
+        "three_layers_pipe": {
+          "title": "3 Layers Pipe",
+          "details": "Robust multi-layer construction combining outer and inner UPVC with mineral-reinforced polypropylene middle core for superior strength and integrated anti-rat protection."
+        },
+        "stronger_resilient_lightweight": {
+          "title": "Stronger, Resilient, and Lightweight",
+          "details": "Exceptional durability, resilience, impressive mechanical strength, and high impact resistance while remaining lightweight for effortless transportation and installation."
+        },
+        "chemical_resistant": {
+          "title": "Chemical Resistant",
+          "details": "Highly resistant to a wide range of acids, alkalis, effluents, salts, minerals, and aggressive soils."
+        },
+        "corrosion_resistance": {
+          "title": "Corrosion Resistance",
+          "details": "Inherently immune to harsh chemicals, biological acids, and alkalis found in wastewater. Never scales or rusts, ensuring smooth unobstructed flow for decades."
+        },
+        "quick_and_easy_installations": {
+          "title": "Quick and Easy Installations",
+          "details": "Easily connected using either rubber ring (Ringfit) or solvent weld (Selfit) system, ensuring completely leak-proof joints, reduced installation time, and minimal maintenance."
+        },
+        "uv_stabilized": {
+          "title": "UV Stabilized",
+          "details": "UV stabilized formulation provides durable protection against sunlight degradation, ensuring outdoor operational longevity."
+        },
+        "high_flow_rates": {
+          "title": "High Flow Rates (Hydraulic Capacity)",
+          "details": "Exceptionally smooth bores, precision joints, and absence of internal projections deliver unmatched hydraulic capacity, maintaining maximum flow rates throughout pipe lifespan."
+        },
+        "flammability": {
+          "title": "Flammability & Fire Safety",
+          "details": "Non-combustible and inherently resistant to ignition. Difficult to ignite and self-extinguishes immediately once heat source is removed."
+        },
+        "economical": {
+          "title": "Economical",
+          "details": "Cost-effective alternative to traditional drainage systems (such as cast iron, concrete, or asbestos), offering value, lower labor costs, and long-term reliability."
+        }
+      }
+    },
+    {
+      "id": "sintex_swrx_type_a",
+      "name": "Sintex SWRX Type A",
+      "tagline": "Rainwater & Ventilation DWV Piping System",
+      "category": "SWR Piping System",
+      "marking_colour": "Blue Text",
+      "purpose": "Specifically engineered for rainwater management and ventilation applications (roof vents and DWV Drain-Waste-Vent systems to maintain stable air pressure).",
+      "standards": "IS 13592-2013",
+      "sizes_available": "75mm, 90mm, 110mm, 160mm (Range: 75mm - 160mm)",
+      "lengths_available": "Ringfit: 1.8m to 6m; Solfit: 3m to 6m",
+      "joint_options": ["Ring Fit (PTFE & EPDM push-fit)", "Sol Fit (PVC solvent weld)"]
+    },
+    {
+      "id": "sintex_swrx_type_b",
+      "name": "Sintex SWRX Type B",
+      "tagline": "Soil & Waste Discharge Piping System",
+      "category": "SWR Piping System",
+      "marking_colour": "White Text",
+      "purpose": "Heavy-duty piping intended specifically for handling soil and waste discharge from toilets, bathrooms, kitchens, and sanitary fixtures.",
+      "standards": "IS 13592-2013 (Pipes), IS 14735:1999 (Fittings)",
+      "sizes_available": "75mm, 90mm, 110mm, 160mm (Range: 75mm - 160mm; Ringfit pipes in 75-110mm)",
+      "lengths_available": "Ringfit: 3m; Solfit: 3m to 6m",
+      "joint_options": ["Ring Fit (PTFE & EPDM push-fit)", "Sol Fit (PVC solvent weld)"]
+    },
+    {
+      "id": "sintex_hotx",
+      "name": "Sintex HotX",
+      "tagline": "Hot & Cold Water Piping System",
+      "category": "Potable & Domestic Plumbing",
+      "application": "Designed for domestic and commercial hot and cold water distribution."
+    },
+    {
+      "id": "sintex_coolx",
+      "name": "Sintex CoolX",
+      "tagline": "Potable Water System",
+      "category": "Potable Water Plumbing",
+      "application": "Safe, hygienic transportation of drinking and potable water."
+    },
+    {
+      "id": "sintex_groundx",
+      "name": "Sintex GroundX",
+      "tagline": "Underground Drainage System",
+      "category": "Drainage System",
+      "application": "Underground sewer and stormwater conveyance networks."
+    },
+    {
+      "id": "sintex_agrix",
+      "name": "Sintex AgriX",
+      "tagline": "Agricultural Water System",
+      "category": "Agriculture & Irrigation",
+      "application": "Agricultural irrigation, borewell lines, and farm water conveyance."
+    },
+    {
+      "id": "sintex_reclaimx",
+      "name": "Sintex ReclaimX",
+      "tagline": "Recycle Water System",
+      "category": "Water Recycling & Treatment",
+      "application": "Conveyance of treated effluent, reclaimed water, and grey water."
+    },
+    {
+      "id": "sintex_surface_drainage",
+      "name": "Sintex Surface Drainage Water System",
+      "tagline": "Surface Drainage Channels & Gratings",
+      "category": "Surface Drainage",
+      "application": "Collection and quick discharge of surface runoff and stormwater."
+    }
+  ],
+  "full_portfolio_overview": {
+    "title": "TRUST OF Sintex NOW IN PIPES",
+    "systems": [
+      {"name": "Sintex HotX", "system": "Hot & Cold Water System"},
+      {"name": "Sintex CoolX", "system": "Potable Water System"},
+      {"name": "Sintex SWRX PRO", "system": "Sewerage Waste Water & Rain Water System"},
+      {"name": "Sintex GroundX", "system": "Drainage System"},
+      {"name": "Sintex AgriX", "system": "Agricultural Water System"},
+      {"name": "Sintex ReclaimX", "system": "Recycle Water System"},
+      {"name": "Sintex Surface Drainage", "system": "Surface Drainage Water System"}
+    ]
+  }
+}

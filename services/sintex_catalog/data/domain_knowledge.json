@@ -128,9 +128,54 @@
       "name": "Additional Reliable Protective Shield (ARPS) (Sintex Tatva)",
       "benefit": "Protects against extreme summer temperature variations and thermal stress."
     },
+    "ratloc_technology": {
+      "name": "RATLOC™ Technology / NXT Advantage of Anti-Rodent Technology (Sintex SWRX PRO)",
+      "benefit": "Specialized antirat composition available exclusively in 3-layer SWRX Sintex pipes that deters rodents (rats, squirrels) from gnawing and chewing on plastic pipes, preventing leaks, blockages, and costly plumbing repairs."
+    },
     "manufacturing_processes": {
       "roto_moulding": "Rotational moulding creates seamless, multi-layer tanks with uniform wall thickness and high structural strength (e.g. Eterno, Pure, Reno, Hero, Ace, Classic).",
       "blow_moulding": "Blow moulding creates durable, flexible, and economical tanks with tight dimensional tolerance (e.g. Neo, Smart, Titus)."
     }
+  },
+  "swrx_pipes_knowledge": {
+    "product": "Sintex SWRX / SWRX PRO UPVC PLUS (Sewerage Waste Rain Water System)",
+    "anti_rodent_protection": "Features RATLOC™ Technology with a specialized anti-rat composition in 3-layer pipes making them unappealing to rodents to eliminate rodent gnawing damage.",
+    "standards": {
+      "pipes": "IS 13592-2013",
+      "fittings": "IS 14735:1999",
+      "bis_range_mm": "40mm to 315mm",
+      "sintex_outer_diameter_range_mm": "75mm to 160mm"
+    },
+    "pipe_types": {
+      "type_a": "Designed specifically for rainwater and ventilation applications (roof vents, DWV Drain-Waste-Vent systems to maintain stable air pressure). Marking text colour: Blue.",
+      "type_b": "Designed for handling soil and waste discharge from sanitary fixtures. Marking text colour: White."
+    },
+    "jointing_systems": {
+      "ringfit": {
+        "type": "Push-fit with integrated groove and PTFE/EPDM rubber rings",
+        "pressure": "Tested up to 0.5 kg/cm²",
+        "thermal_expansion": "Expansion rate is 0.06 mm/m/°C (a 2m pipe expands by 2.4 mm for a 20°C rise). Re-openable joints accommodate movement without leaks."
+      },
+      "selfit": {
+        "type": "Solvent cement jointing with plain and socketed ends",
+        "best_use": "Recommended for concealed drainage and horizontal indoor installations protected from direct sunlight."
+      }
+    },
+    "solvent_cement_skus": {
+      "co_ex_bottles": ["50 ML", "100 ML", "250 ML"],
+      "tins": ["500 ML", "1 L"],
+      "lubricant": ["100 GM", "250 GM", "500 GM"]
+    },
+    "fire_safety": "Non-combustible and inherently resistant to ignition. Self-extinguishes immediately once the heat source is removed.",
+    "environmental_benefit": "uPVC is the least energy-intensive thermoplastic with lowest feedstock energy, 100% recyclable with minimal global resource footprint."
+  },
+  "sintex_pipe_portfolio": {
+    "hot_and_cold_water": "Sintex HotX",
+    "potable_water": "Sintex CoolX",
+    "sewerage_waste_rain_water": "Sintex SWRX / SWRX PRO",
+    "drainage_system": "Sintex GroundX",
+    "agricultural_water": "Sintex AgriX",
+    "recycle_water": "Sintex ReclaimX",
+    "surface_drainage": "Sintex Surface Drainage Water System"
   }
 }
